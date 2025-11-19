@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  role         String   @default("MANAGER")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  batches          Batch[]
+  adjustmentStatus InternalAdjustmentStatus[]
+  activityLogs     ActivityLog[]
+  creativeVersions CreativeVersion[]
+
+  @@map("users")
+}
+
+model Client {
+  id            String   @id @default(uuid())
+  name          String
+  email         String?
+  company       String?
+  contactPerson String?  @map("contact_person")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  batches Batch[]
+
+  @@map("clients")
+}
+
+model Batch {
+  id                String    @id @default(uuid())
+  name              String
+  clientId          String    @map("client_id")
+  createdByUserId   String    @map("created_by_user_id")
+  status            String    @default("PENDING")
+  accessToken       String    @unique @map("access_token")
+  totalCreatives    Int       @default(0) @map("total_creatives")
+  approvedCount     Int       @default(0) @map("approved_count")
+  rejectedCount     Int       @default(0) @map("rejected_count")
+  pendingCount      Int       @default(0) @map("pending_count")
+  lastInteractionAt DateTime? @map("last_interaction_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy    User          @relation(fields: [createdByUserId], references: [id])
+  creatives    Creative[]
+  activityLogs ActivityLog[]
+
+  @@index([clientId])
+  @@index([accessToken])
+  @@map("batches")
+}
+
+model Creative {
+  id             String   @id @default(uuid())
+  batchId        String   @map("batch_id")
+  name           String
+  fileUrl        String   @map("file_url")
+  fileType       String   @map("file_type")
+  order          Int      @default(0)
+  currentVersion Int      @default(1) @map("current_version")
+  revisionCount  Int      @default(0) @map("revision_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  batch            Batch                     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  approval         Approval?
+  adjustmentStatus InternalAdjustmentStatus?
+  activityLogs     ActivityLog[]
+  versions         CreativeVersion[]
+
+  @@index([batchId])
+  @@map("creatives")
+}
+
+model CreativeVersion {
+  id               String   @id @default(uuid())
+  creativeId       String   @map("creative_id")
+  version          Int
+  fileUrl          String   @map("file_url")
+  fileType         String   @map("file_type")
+  uploadedByUserId String?  @map("uploaded_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  creative   Creative @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation(fields: [uploadedByUserId], references: [id])
+
+  @@unique([creativeId, version])
+  @@index([creativeId])
+  @@map("creative_versions")
+}
+
+model Approval {
+  id                 String    @id @default(uuid())
+  creativeId         String    @unique @map("creative_id")
+  status             String    @default("PENDING")
+  feedbackText       String?   @map("feedback_text")
+  feedbackProvidedAt DateTime? @map("feedback_provided_at")
+  reviewedVersion    Int       @default(1) @map("reviewed_version")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  creative Creative @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+
+  @@map("approvals")
+}
+
+model InternalAdjustmentStatus {
+  id              String   @id @default(uuid())
+  creativeId      String   @unique @map("creative_id")
+  status          String   @default("NOT_STARTED")
+  notes           String?
+  updatedByUserId String?  @map("updated_by_user_id")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  creative  Creative @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  updatedBy User?    @relation(fields: [updatedByUserId], references: [id])
+
+  @@map("internal_adjustment_status")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  batchId    String?  @map("batch_id")
+  creativeId String?  @map("creative_id")
+  userId     String?  @map("user_id")
+  action     String
+  details    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  batch    Batch?    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  creative Creative? @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id])
+
+  @@index([batchId])
+  @@index([creativeId])
+  @@map("activity_logs")
+}
