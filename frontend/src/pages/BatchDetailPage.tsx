@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, Upload, RefreshCw } from 'lucide-react';
-import { getBatch, updateAdjustmentStatus, uploadRevision } from '../lib/api';
+import { getBatch, updateAdjustmentStatus, uploadRevision, getFileUrl } from '../lib/api';
 import type { Batch, Creative } from '../types';
 
 export function BatchDetailPage() {
@@ -176,13 +176,13 @@ export function BatchDetailPage() {
                   <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
                     {creative.fileType === 'IMAGE' ? (
                       <img
-                        src={`http://localhost:3000${creative.fileUrl}`}
+                        src={getFileUrl(creative.fileUrl)}
                         alt={creative.name}
                         className="w-full h-full object-cover"
                       />
                     ) : creative.fileType === 'VIDEO' ? (
                       <video
-                        src={`http://localhost:3000${creative.fileUrl}`}
+                        src={getFileUrl(creative.fileUrl)}
                         className="w-full h-full object-cover"
                       />
                     ) : (

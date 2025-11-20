@@ -1,17 +1,25 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../config/prisma.service';
 import { BatchesService } from '../batches/batches.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CloudinaryService } from '../../config/cloudinary.service';
 
 @Injectable()
 export class CreativesService {
+  private useCloudinary: boolean;
+
   constructor(
     private prisma: PrismaService,
     private batchesService: BatchesService,
     private activityLogService: ActivityLogService,
     private notificationsService: NotificationsService,
-  ) {}
+    private cloudinaryService: CloudinaryService,
+    private configService: ConfigService,
+  ) {
+    this.useCloudinary = !!this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+  }
 
   async create(batchId: string, files: Express.Multer.File[], userId: string) {
     const batch = await this.batchesService.findOne(batchId);
@@ -19,7 +27,11 @@ export class CreativesService {
     const creatives = await Promise.all(
       files.map(async (file, index) => {
         const fileType = this.getFileType(file.mimetype);
-        const fileUrl = `/uploads/${file.filename}`;
+
+        // Upload to Cloudinary or use local path
+        const fileUrl = this.useCloudinary
+          ? await this.cloudinaryService.uploadFile(file)
+          : `/uploads/${file.filename || 'local-file'}`;
 
         const creative = await this.prisma.creative.create({
           data: {
@@ -92,7 +104,9 @@ export class CreativesService {
     }
 
     const fileType = this.getFileType(file.mimetype);
-    const fileUrl = `/uploads/${file.filename}`;
+    const fileUrl = this.useCloudinary
+      ? await this.cloudinaryService.uploadFile(file)
+      : `/uploads/${file.filename || 'local-file'}`;
     const newVersion = creative.currentVersion + 1;
 
     // Create new version

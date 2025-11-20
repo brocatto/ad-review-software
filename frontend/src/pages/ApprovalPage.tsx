@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
 import { Check, X } from 'lucide-react';
-import { getPublicBatch, approveCreative, rejectCreative } from '../lib/api';
+import { getPublicBatch, approveCreative, rejectCreative, getFileUrl } from '../lib/api';
 import type { Batch, Creative } from '../types';
 
 export function ApprovalPage() {
@@ -248,14 +248,14 @@ function SwipeCard({
       <div className="absolute inset-0 bg-bg-secondary rounded-[32px] border border-glass-border overflow-hidden shadow-2xl">
         {creative.fileType === 'IMAGE' ? (
           <img
-            src={`http://localhost:3000${creative.fileUrl}`}
+            src={getFileUrl(creative.fileUrl)}
             alt={creative.name}
             className="w-full h-full object-cover"
             draggable={false}
           />
         ) : creative.fileType === 'VIDEO' ? (
           <video
-            src={`http://localhost:3000${creative.fileUrl}`}
+            src={getFileUrl(creative.fileUrl)}
             className="w-full h-full object-cover"
             autoPlay
             loop

@@ -1,7 +1,9 @@
 import axios from 'axios';
 import type { AuthResponse, Batch, Client, Creative, ActivityLog } from '../types';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+export const getFileUrl = (path: string) => `${API_URL}${path}`;
 
 const api = axios.create({
   baseURL: API_URL,

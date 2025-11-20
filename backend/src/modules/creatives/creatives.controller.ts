@@ -14,9 +14,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { memoryStorage } from 'multer';
 import { CreativesService } from './creatives.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -28,13 +26,7 @@ export class CreativesController {
   @Post('batch/:batchId')
   @UseInterceptors(
     FilesInterceptor('files', 50, {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const uniqueSuffix = uuidv4();
-          cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
       },
@@ -76,13 +68,7 @@ export class CreativesController {
   @Post(':id/revision')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const uniqueSuffix = uuidv4();
-          cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
       },
