@@ -39,6 +39,8 @@ Thumbs.db
 # Uploads
 uploads/*
 !uploads/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # Prisma
 prisma/migrations/*_migration_lock.toml
@@ -46,3 +48,19 @@ prisma/migrations/*_migration_lock.toml
 # Database
 *.db
 *.db-journal
+
+# Environment & Secrets (AIOS)
+.env.*.local
+*.key
+*.pem
+
+# Dependencies (AIOS)
+node_modules
+
+# Build & Logs (AIOS)
+logs/
+
+# AIOS Local (AIOS)
+.aios-core/local/
+.claude/settings.local.json
+.aios/install-log.txt

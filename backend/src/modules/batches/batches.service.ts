@@ -1,19 +1,29 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ClientsService } from '../clients/clients.service';
 
 @Injectable()
 export class BatchesService {
   constructor(
     private prisma: PrismaService,
+    @Inject(forwardRef(() => ActivityLogService))
     private activityLogService: ActivityLogService,
     private notificationsService: NotificationsService,
+    @Inject(forwardRef(() => ClientsService))
+    private clientsService: ClientsService,
   ) {}
 
   async create(createBatchDto: CreateBatchDto, userId: string) {
+    // Verify client belongs to user
+    const isOwner = await this.clientsService.verifyOwnership(createBatchDto.clientId, userId);
+    if (!isOwner) {
+      throw new ForbiddenException('Access denied to this client');
+    }
+
     const batch = await this.prisma.batch.create({
       data: {
         name: createBatchDto.name,
@@ -43,8 +53,9 @@ export class BatchesService {
     return batch;
   }
 
-  async findAll(userId?: string) {
+  async findAll(userId: string) {
     return this.prisma.batch.findMany({
+      where: { createdByUserId: userId },
       include: {
         client: true,
         createdBy: {
@@ -62,7 +73,7 @@ export class BatchesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId?: string) {
     const batch = await this.prisma.batch.findUnique({
       where: { id },
       include: {
@@ -92,7 +103,26 @@ export class BatchesService {
       throw new NotFoundException('Batch not found');
     }
 
+    // If userId provided, verify ownership
+    if (userId && batch.createdByUserId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
     return batch;
+  }
+
+  // Verify batch ownership (for use by other modules)
+  async verifyOwnership(batchId: string, userId: string): Promise<boolean> {
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { createdByUserId: true },
+    });
+
+    if (!batch) {
+      throw new NotFoundException('Batch not found');
+    }
+
+    return batch.createdByUserId === userId;
   }
 
   async findByAccessToken(accessToken: string) {
@@ -182,8 +212,8 @@ export class BatchesService {
     return updatedBatch;
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, userId: string) {
+    await this.findOne(id, userId);
 
     return this.prisma.batch.delete({
       where: { id },

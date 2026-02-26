@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../config/prisma.service';
 import { BatchesService } from '../batches/batches.service';
@@ -22,7 +22,8 @@ export class CreativesService {
   }
 
   async create(batchId: string, files: Express.Multer.File[], userId: string) {
-    const batch = await this.batchesService.findOne(batchId);
+    // Verify batch ownership
+    const batch = await this.batchesService.findOne(batchId, userId);
 
     const creatives = await Promise.all(
       files.map(async (file, index) => {
@@ -96,7 +97,8 @@ export class CreativesService {
   }
 
   async uploadRevision(id: string, file: Express.Multer.File, userId: string) {
-    const creative = await this.findOne(id);
+    // Verify ownership through batch
+    const creative = await this.findOne(id, userId);
 
     // Check if creative was rejected
     if (creative.approval?.status !== 'REJECTED') {
@@ -162,10 +164,16 @@ export class CreativesService {
       details: { version: newVersion },
     });
 
-    return this.findOne(id);
+    return this.findOne(id, userId);
   }
 
-  async findByBatch(batchId: string) {
+  async findByBatch(batchId: string, userId: string) {
+    // Verify batch ownership
+    const isOwner = await this.batchesService.verifyOwnership(batchId, userId);
+    if (!isOwner) {
+      throw new ForbiddenException('Access denied');
+    }
+
     return this.prisma.creative.findMany({
       where: { batchId },
       include: {
@@ -176,7 +184,7 @@ export class CreativesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId?: string) {
     const creative = await this.prisma.creative.findUnique({
       where: { id },
       include: {
@@ -193,11 +201,19 @@ export class CreativesService {
       throw new NotFoundException('Creative not found');
     }
 
+    // If userId provided, verify ownership through batch
+    if (userId) {
+      const isOwner = await this.batchesService.verifyOwnership(creative.batchId, userId);
+      if (!isOwner) {
+        throw new ForbiddenException('Access denied');
+      }
+    }
+
     return creative;
   }
 
-  async updateName(id: string, name: string) {
-    await this.findOne(id);
+  async updateName(id: string, name: string, userId: string) {
+    await this.findOne(id, userId);
 
     return this.prisma.creative.update({
       where: { id },
@@ -211,7 +227,8 @@ export class CreativesService {
     notes: string | undefined,
     userId: string,
   ) {
-    const creative = await this.findOne(id);
+    // Verify ownership through batch
+    const creative = await this.findOne(id, userId);
 
     const updated = await this.prisma.internalAdjustmentStatus.update({
       where: { creativeId: id },
@@ -233,8 +250,9 @@ export class CreativesService {
     return updated;
   }
 
-  async remove(id: string) {
-    const creative = await this.findOne(id);
+  async remove(id: string, userId: string) {
+    // Verify ownership through batch
+    const creative = await this.findOne(id, userId);
 
     await this.prisma.creative.delete({
       where: { id },

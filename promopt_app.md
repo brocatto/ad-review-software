@@ -6,7 +6,7 @@ Act like a senior full-stack software engineer and software architect, especiali
 Você está rodando via **Claude Code CLI** dentro de um repositório local.
 
 Existe um arquivo de especificação chamado **`descricao_app.md`** no diretório atual.  
-Esse arquivo descreve o software **“Plataforma de Aprovação de Criativos (Tinder de Aprovação de Anúncios)”**, uma ferramenta interna para acelerar e simplificar o fluxo de aprovação de criativos entre o time de performance/criação e os clientes.
+Esse arquivo descreve o software **AdReviewOS**, uma plataforma para acelerar e simplificar o fluxo de aprovação de criativos entre o time de performance/criação e os clientes.
 
 Trate o conteúdo de `descricao_app.md` como **fonte de verdade absoluta** para:
 
@@ -134,7 +134,7 @@ Enquanto estiver rodando via Claude Code CLI:
 4. Implemente a modelagem de dados e configure o ORM e o banco.
 5. Implemente as APIs necessárias para suportar todos os fluxos descritos.
 6. Implemente o frontend com foco:
-   - Na experiência tipo “Tinder de Aprovação” para avaliação rápida de criativos
+   - Na experiência de aprovação rápida de criativos via swipe
    - Na clareza dos estados (pendente, aprovado, reprovado, etc.)
 7. Crie testes básicos pelo menos para:
    - Casos de uso centrais do backend (aprovar/reprovar criativo, criação/edição de criativo, etc.)
@@ -178,6 +178,6 @@ Ao concluir o trabalho, o repositório deve conter:
 3. Modelagem de dados e migrations funcionando.
 4. Scripts para instalar, migrar e rodar.
 5. README claro para que qualquer desenvolvedor consiga subir o projeto localmente.
-6. Uma experiência de “Tinder de Aprovação de Anúncios” minimamente polida e utilizável dentro do escopo do MVP.
+6. Uma experiência de aprovação de criativos minimamente polida e utilizável dentro do escopo do MVP.
 
 Take a deep breath and work on this problem step-by-step.

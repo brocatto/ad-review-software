@@ -24,7 +24,6 @@ export function DashboardPage() {
   };
 
   const totalBatches = batches.length;
-  const totalCreatives = batches.reduce((sum, b) => sum + b.totalCreatives, 0);
   const totalApproved = batches.reduce((sum, b) => sum + b.approvedCount, 0);
   const totalRejected = batches.reduce((sum, b) => sum + b.rejectedCount, 0);
   const totalPending = batches.reduce((sum, b) => sum + b.pendingCount, 0);
@@ -34,104 +33,104 @@ export function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Carregando...</div>
+        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-black mb-8">Dashboard</h1>
+    <div className="animate-fadeIn">
+      <h1 className="text-2xl font-semibold text-text-primary mb-8">Dashboard</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="card p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gray-100 rounded-lg">
-              <FolderOpen size={24} className="text-gray-600" />
+            <div className="p-3 bg-white/5 rounded-xl">
+              <FolderOpen size={24} className="text-text-secondary" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total de Lotes</p>
-              <p className="text-2xl font-semibold">{totalBatches}</p>
+              <p className="text-sm text-text-tertiary">Total de Lotes</p>
+              <p className="text-2xl font-semibold text-text-primary">{totalBatches}</p>
             </div>
           </div>
         </div>
 
         <div className="card p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-50 rounded-lg">
-              <CheckCircle size={24} className="text-green-600" />
+            <div className="p-3 bg-status-success/20 rounded-xl">
+              <CheckCircle size={24} className="text-status-success" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Aprovados</p>
-              <p className="text-2xl font-semibold text-green-600">{totalApproved}</p>
+              <p className="text-sm text-text-tertiary">Aprovados</p>
+              <p className="text-2xl font-semibold text-status-success">{totalApproved}</p>
             </div>
           </div>
         </div>
 
         <div className="card p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-lg">
-              <XCircle size={24} className="text-red-600" />
+            <div className="p-3 bg-status-error/20 rounded-xl">
+              <XCircle size={24} className="text-status-error" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Reprovados</p>
-              <p className="text-2xl font-semibold text-red-600">{totalRejected}</p>
+              <p className="text-sm text-text-tertiary">Reprovados</p>
+              <p className="text-2xl font-semibold text-status-error">{totalRejected}</p>
             </div>
           </div>
         </div>
 
         <div className="card p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-yellow-50 rounded-lg">
-              <Clock size={24} className="text-yellow-600" />
+            <div className="p-3 bg-status-warning/20 rounded-xl">
+              <Clock size={24} className="text-status-warning" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Pendentes</p>
-              <p className="text-2xl font-semibold text-yellow-600">{totalPending}</p>
+              <p className="text-sm text-text-tertiary">Pendentes</p>
+              <p className="text-2xl font-semibold text-status-warning">{totalPending}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Recent Batches */}
-      <div className="card">
-        <div className="p-6 border-b border-gray-100">
+      <div className="card-static">
+        <div className="p-6 border-b border-glass-border">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Lotes Recentes</h2>
-            <Link to="/batches" className="text-sm text-gray-500 hover:text-black">
+            <h2 className="text-lg font-semibold text-text-primary">Lotes Recentes</h2>
+            <Link to="/batches" className="text-sm text-text-tertiary hover:text-text-primary transition-colors">
               Ver todos
             </Link>
           </div>
         </div>
 
         {recentBatches.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-text-tertiary">
             Nenhum lote criado ainda.{' '}
-            <Link to="/batches/new" className="text-black underline">
+            <Link to="/batches/new" className="text-text-primary underline">
               Criar primeiro lote
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-glass-border">
             {recentBatches.map((batch) => (
               <Link
                 key={batch.id}
                 to={`/batches/${batch.id}`}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
               >
                 <div>
-                  <p className="font-medium text-black">{batch.name}</p>
-                  <p className="text-sm text-gray-500">{batch.client.name}</p>
+                  <p className="font-medium text-text-primary">{batch.name}</p>
+                  <p className="text-sm text-text-tertiary">{batch.client.name}</p>
                 </div>
                 <div className="text-right">
                   <span
-                    className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                    className={`badge ${
                       batch.status === 'COMPLETED'
-                        ? 'bg-green-100 text-green-700'
+                        ? 'badge-success'
                         : batch.status === 'PARTIAL'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-gray-100 text-gray-700'
+                        ? 'badge-warning'
+                        : ''
                     }`}
                   >
                     {batch.status === 'COMPLETED'
@@ -140,7 +139,7 @@ export function DashboardPage() {
                       ? 'Parcial'
                       : 'Pendente'}
                   </span>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-text-muted mt-1">
                     {batch.approvedCount}/{batch.totalCreatives} aprovados
                   </p>
                 </div>

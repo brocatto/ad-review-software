@@ -1,0 +1,27 @@
+{
+  "name": "tinder-ad-software",
+  "version": "1.0.0",
+  "description": "Plataforma de Aprovação de Criativos - Uma solução B2B para acelerar o fluxo de aprovação de criativos entre times de marketing e clientes.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brocatto/ad-review-software.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/brocatto/ad-review-software/issues"
+  },
+  "homepage": "https://github.com/brocatto/ad-review-software#readme",
+  "dependencies": {
+    "@aios-fullstack/pro": "^0.1.3"
+  }
+}

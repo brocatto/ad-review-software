@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Plataforma de Aprovação de Criativos** ("Tinder de Aprovação de Anúncios") - A B2B SaaS internal tool for creative approval workflows between performance/creative teams and clients.
+**AdReviewOS** - A B2B SaaS platform for creative approval workflows between performance/creative teams and clients.
 
-**Current Status:** Specification phase only - no implementation code yet.
+**Current Status:** MVP implemented and functional.
 
 ## Source of Truth
 

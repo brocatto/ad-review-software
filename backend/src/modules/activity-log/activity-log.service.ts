@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
+import { BatchesService } from '../batches/batches.service';
 
 interface LogEntry {
   batchId?: string;
@@ -11,7 +12,11 @@ interface LogEntry {
 
 @Injectable()
 export class ActivityLogService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => BatchesService))
+    private batchesService: BatchesService,
+  ) {}
 
   async log(entry: LogEntry) {
     return this.prisma.activityLog.create({
@@ -25,7 +30,13 @@ export class ActivityLogService {
     });
   }
 
-  async findByBatch(batchId: string) {
+  async findByBatch(batchId: string, userId: string) {
+    // Verify batch ownership
+    const isOwner = await this.batchesService.verifyOwnership(batchId, userId);
+    if (!isOwner) {
+      throw new ForbiddenException('Access denied');
+    }
+
     return this.prisma.activityLog.findMany({
       where: { batchId },
       include: {
@@ -46,7 +57,23 @@ export class ActivityLogService {
     });
   }
 
-  async findByCreative(creativeId: string) {
+  async findByCreative(creativeId: string, userId: string) {
+    // Get creative to find batch
+    const creative = await this.prisma.creative.findUnique({
+      where: { id: creativeId },
+      select: { batchId: true },
+    });
+
+    if (!creative) {
+      throw new NotFoundException('Creative not found');
+    }
+
+    // Verify batch ownership
+    const isOwner = await this.batchesService.verifyOwnership(creative.batchId, userId);
+    if (!isOwner) {
+      throw new ForbiddenException('Access denied');
+    }
+
     return this.prisma.activityLog.findMany({
       where: { creativeId },
       include: {

@@ -73,33 +73,18 @@ export function BatchDetailPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'APPROVED':
-        return <CheckCircle className="text-green-500" size={20} />;
+        return <CheckCircle className="text-status-success" size={20} />;
       case 'REJECTED':
-        return <XCircle className="text-red-500" size={20} />;
+        return <XCircle className="text-status-error" size={20} />;
       default:
-        return <Clock className="text-yellow-500" size={20} />;
-    }
-  };
-
-  const getAdjustmentLabel = (status: string) => {
-    switch (status) {
-      case 'NOT_STARTED':
-        return 'Não iniciado';
-      case 'IN_PROGRESS':
-        return 'Em execução';
-      case 'ADJUSTED':
-        return 'Ajustado';
-      case 'RESENT':
-        return 'Reenviado';
-      default:
-        return status;
+        return <Clock className="text-status-warning" size={20} />;
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Carregando...</div>
+        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
@@ -107,8 +92,8 @@ export function BatchDetailPage() {
   if (!batch) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Lote não encontrado</p>
-        <Link to="/batches" className="text-black underline mt-2 inline-block">
+        <p className="text-text-tertiary">Lote não encontrado</p>
+        <Link to="/batches" className="text-text-primary underline mt-2 inline-block">
           Voltar para lotes
         </Link>
       </div>
@@ -116,19 +101,19 @@ export function BatchDetailPage() {
   }
 
   return (
-    <div>
+    <div className="animate-fadeIn">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Link
             to="/batches"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="btn-icon"
           >
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold text-black">{batch.name}</h1>
-            <p className="text-gray-500">{batch.client.name}</p>
+            <h1 className="text-2xl font-semibold text-text-primary">{batch.name}</h1>
+            <p className="text-text-tertiary">{batch.client.name}</p>
           </div>
         </div>
         <button onClick={copyLink} className="btn btn-secondary flex items-center gap-2">
@@ -140,40 +125,40 @@ export function BatchDetailPage() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="card p-4 text-center">
-          <p className="text-2xl font-semibold">{batch.totalCreatives}</p>
-          <p className="text-sm text-gray-500">Total</p>
+          <p className="text-2xl font-semibold text-text-primary">{batch.totalCreatives}</p>
+          <p className="text-sm text-text-tertiary">Total</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-semibold text-green-600">{batch.approvedCount}</p>
-          <p className="text-sm text-gray-500">Aprovados</p>
+          <p className="text-2xl font-semibold text-status-success">{batch.approvedCount}</p>
+          <p className="text-sm text-text-tertiary">Aprovados</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-semibold text-red-600">{batch.rejectedCount}</p>
-          <p className="text-sm text-gray-500">Reprovados</p>
+          <p className="text-2xl font-semibold text-status-error">{batch.rejectedCount}</p>
+          <p className="text-sm text-text-tertiary">Reprovados</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-semibold text-yellow-600">{batch.pendingCount}</p>
-          <p className="text-sm text-gray-500">Pendentes</p>
+          <p className="text-2xl font-semibold text-status-warning">{batch.pendingCount}</p>
+          <p className="text-sm text-text-tertiary">Pendentes</p>
         </div>
       </div>
 
       {/* Creatives */}
-      <div className="card">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold">Criativos</h2>
+      <div className="card-static">
+        <div className="p-6 border-b border-glass-border">
+          <h2 className="text-lg font-semibold text-text-primary">Criativos</h2>
         </div>
 
         {batch.creatives?.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-text-tertiary">
             Nenhum criativo neste lote.
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-glass-border">
             {batch.creatives?.map((creative: Creative) => (
               <div key={creative.id} className="p-4">
                 <div className="flex items-start gap-4">
                   {/* Thumbnail */}
-                  <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
+                  <div className="w-24 h-24 bg-white/5 rounded-xl overflow-hidden flex-shrink-0 relative border border-glass-border">
                     {creative.fileType === 'IMAGE' ? (
                       <img
                         src={getFileUrl(creative.fileUrl)}
@@ -186,13 +171,13 @@ export function BatchDetailPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex items-center justify-center text-text-muted">
                         TXT
                       </div>
                     )}
                     {/* Version badge */}
                     {creative.currentVersion > 1 && (
-                      <span className="absolute top-1 right-1 bg-black text-white text-xs px-1.5 py-0.5 rounded">
+                      <span className="absolute top-1 right-1 bg-white/20 backdrop-blur-sm text-white text-xs px-1.5 py-0.5 rounded-lg">
                         v{creative.currentVersion}
                       </span>
                     )}
@@ -202,9 +187,9 @@ export function BatchDetailPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       {getStatusIcon(creative.approval?.status || 'PENDING')}
-                      <span className="font-medium">{creative.name}</span>
+                      <span className="font-medium text-text-primary">{creative.name}</span>
                       {creative.revisionCount > 0 && (
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <span className="text-xs text-text-muted flex items-center gap-1">
                           <RefreshCw size={12} />
                           {creative.revisionCount} revisão(ões)
                         </span>
@@ -213,7 +198,7 @@ export function BatchDetailPage() {
 
                     {/* Feedback */}
                     {creative.approval?.feedbackText && (
-                      <div className="bg-red-50 text-red-700 text-sm p-3 rounded-lg mb-3">
+                      <div className="alert alert-error mb-3">
                         <strong>Feedback:</strong> {creative.approval.feedbackText}
                       </div>
                     )}
@@ -222,13 +207,13 @@ export function BatchDetailPage() {
                     {creative.approval?.status === 'REJECTED' && (
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">Status interno:</span>
+                          <span className="text-sm text-text-tertiary">Status interno:</span>
                           <select
                             value={creative.adjustmentStatus?.status || 'NOT_STARTED'}
                             onChange={(e) =>
                               handleAdjustmentChange(creative.id, e.target.value)
                             }
-                            className="text-sm border border-gray-200 rounded px-2 py-1"
+                            className="input py-1 px-2 text-sm w-auto"
                           >
                             <option value="NOT_STARTED">Não iniciado</option>
                             <option value="IN_PROGRESS">Em execução</option>
@@ -238,7 +223,7 @@ export function BatchDetailPage() {
                         </div>
                         <button
                           onClick={() => openRevisionModal(creative)}
-                          className="flex items-center gap-1 text-sm bg-black text-white px-3 py-1 rounded hover:bg-gray-800 transition-colors"
+                          className="btn btn-primary py-1 px-3 text-sm flex items-center gap-1"
                         >
                           <Upload size={14} />
                           Enviar Revisão
@@ -255,13 +240,13 @@ export function BatchDetailPage() {
 
       {/* Revision Upload Modal */}
       {showRevisionModal && selectedCreative && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-semibold mb-4">Enviar Revisão</h2>
-            <p className="text-gray-600 mb-4">
-              Enviando nova versão para: <strong>{selectedCreative.name}</strong>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="card-static p-6 w-full max-w-md mx-4 animate-slideUp">
+            <h2 className="text-xl font-semibold text-text-primary mb-4">Enviar Revisão</h2>
+            <p className="text-text-secondary mb-4">
+              Enviando nova versão para: <strong className="text-text-primary">{selectedCreative.name}</strong>
             </p>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-text-muted mb-4">
               Versão atual: v{selectedCreative.currentVersion} → Nova versão: v{selectedCreative.currentVersion + 1}
             </p>
 
@@ -270,7 +255,7 @@ export function BatchDetailPage() {
               type="file"
               onChange={handleRevisionUpload}
               accept="image/*,video/*"
-              className="w-full mb-4"
+              className="w-full mb-4 text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-white/10 file:text-text-primary hover:file:bg-white/20"
               disabled={uploading}
             />
 
@@ -290,7 +275,14 @@ export function BatchDetailPage() {
                 className="btn btn-primary flex-1"
                 disabled={uploading}
               >
-                {uploading ? 'Enviando...' : 'Selecionar Arquivo'}
+                {uploading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Enviando...
+                  </span>
+                ) : (
+                  'Selecionar Arquivo'
+                )}
               </button>
             </div>
           </div>

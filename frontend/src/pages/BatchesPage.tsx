@@ -53,15 +53,15 @@ export function BatchesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Carregando...</div>
+        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="animate-fadeIn">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-semibold text-black">Lotes Enviados</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">Lotes Enviados</h1>
         <Link to="/batches/new" className="btn btn-primary flex items-center gap-2">
           <Plus size={20} />
           Novo Lote
@@ -69,57 +69,57 @@ export function BatchesPage() {
       </div>
 
       {batches.length === 0 ? (
-        <div className="card p-8 text-center">
-          <p className="text-gray-500 mb-4">Nenhum lote criado ainda.</p>
+        <div className="card-static p-8 text-center">
+          <p className="text-text-tertiary mb-4">Nenhum lote criado ainda.</p>
           <Link to="/batches/new" className="btn btn-primary">
             Criar primeiro lote
           </Link>
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card-static overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-white/5">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Nome
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Cliente
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Status
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Progresso
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Criado em
                 </th>
-                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="text-right px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Ações
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-glass-border">
               {batches.map((batch) => (
-                <tr key={batch.id} className="hover:bg-gray-50">
+                <tr key={batch.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4">
                     <Link
                       to={`/batches/${batch.id}`}
-                      className="font-medium text-black hover:underline"
+                      className="font-medium text-text-primary hover:text-white/80"
                     >
                       {batch.name}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 text-gray-600">{batch.client.name}</td>
+                  <td className="px-6 py-4 text-text-secondary">{batch.client.name}</td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                      className={`badge ${
                         batch.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'badge-success'
                           : batch.status === 'PARTIAL'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
+                          ? 'badge-warning'
+                          : ''
                       }`}
                     >
                       {batch.status === 'COMPLETED'
@@ -131,28 +131,28 @@ export function BatchesPage() {
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="text-green-600">{batch.approvedCount}</span>
-                      <span className="text-gray-400">/</span>
-                      <span className="text-red-600">{batch.rejectedCount}</span>
-                      <span className="text-gray-400">/</span>
-                      <span className="text-gray-600">{batch.totalCreatives}</span>
+                      <span className="text-status-success">{batch.approvedCount}</span>
+                      <span className="text-text-muted">/</span>
+                      <span className="text-status-error">{batch.rejectedCount}</span>
+                      <span className="text-text-muted">/</span>
+                      <span className="text-text-secondary">{batch.totalCreatives}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-text-tertiary">
                     {formatDate(batch.createdAt)}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => copyLink(batch.accessToken)}
-                        className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg"
+                        className="btn-icon"
                         title="Copiar link"
                       >
                         <ExternalLink size={16} />
                       </button>
                       <button
                         onClick={() => handleDelete(batch.id)}
-                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        className="btn-icon hover:bg-status-error/20 hover:text-status-error hover:border-status-error/30"
                         title="Excluir"
                       >
                         <Trash2 size={16} />

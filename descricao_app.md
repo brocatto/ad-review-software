@@ -1,9 +1,9 @@
-# Software: Plataforma de Aprovação de Criativos (“Tinder de Aprovação”)
+# AdReviewOS - Plataforma de Aprovação de Criativos
 
 ## 1. Visão Geral do Produto
 
-Este software é uma plataforma interna criada para acelerar e simplificar o fluxo de aprovação de criativos entre o time de performance/criação e os clientes.  
-Ele funciona como um **“Tinder de Aprovação de Anúncios”**, onde:
+**AdReviewOS** é uma plataforma criada para acelerar e simplificar o fluxo de aprovação de criativos entre o time de performance/criação e os clientes.
+O sistema oferece uma experiência de aprovação intuitiva baseada em swipe, onde:
 
 - O time envia um *lote* de criativos para revisão.
 - O cliente recebe um link único e acessa pelo celular.

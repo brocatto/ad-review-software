@@ -77,15 +77,13 @@ export function CreateBatchPage() {
   };
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-semibold text-black mb-8">Criar Novo Lote</h1>
+    <div className="max-w-2xl animate-fadeIn">
+      <h1 className="text-2xl font-semibold text-text-primary mb-8">Criar Novo Lote</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Batch Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Nome do Lote
-          </label>
+          <label className="label">Nome do Lote</label>
           <input
             type="text"
             value={name}
@@ -98,9 +96,7 @@ export function CreateBatchPage() {
 
         {/* Client Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Cliente
-          </label>
+          <label className="label">Cliente</label>
           {showNewClient ? (
             <div className="flex gap-2">
               <input
@@ -155,25 +151,23 @@ export function CreateBatchPage() {
 
         {/* File Upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Criativos
-          </label>
+          <label className="label">Criativos</label>
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
               isDragActive
-                ? 'border-black bg-gray-50'
-                : 'border-gray-300 hover:border-gray-400'
+                ? 'border-white/40 bg-white/10'
+                : 'border-glass-border hover:border-white/20 hover:bg-white/5'
             }`}
           >
             <input {...getInputProps()} />
-            <Upload className="mx-auto mb-4 text-gray-400" size={32} />
-            <p className="text-gray-600">
+            <Upload className="mx-auto mb-4 text-text-tertiary" size={32} />
+            <p className="text-text-secondary">
               {isDragActive
                 ? 'Solte os arquivos aqui...'
                 : 'Arraste arquivos ou clique para selecionar'}
             </p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm text-text-muted mt-2">
               Imagens (PNG, JPG, GIF) e vídeos (MP4, WebM)
             </p>
           </div>
@@ -184,28 +178,28 @@ export function CreateBatchPage() {
               {files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-glass-border"
                 >
                   <div className="flex items-center gap-3">
                     {file.type.startsWith('image/') ? (
                       <img
                         src={URL.createObjectURL(file)}
                         alt={file.name}
-                        className="w-10 h-10 object-cover rounded"
+                        className="w-10 h-10 object-cover rounded-lg"
                       />
                     ) : (
-                      <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-xs text-text-tertiary">
                         VID
                       </div>
                     )}
-                    <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                    <span className="text-sm text-text-secondary truncate max-w-[200px]">
                       {file.name}
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeFile(index)}
-                    className="p-1 text-gray-400 hover:text-red-500"
+                    className="p-1 text-text-muted hover:text-status-error transition-colors"
                   >
                     <X size={16} />
                   </button>
@@ -220,9 +214,16 @@ export function CreateBatchPage() {
           <button
             type="submit"
             disabled={loading || !name || !clientId || files.length === 0}
-            className="btn btn-primary flex-1 py-3 disabled:opacity-50"
+            className="btn btn-primary flex-1"
           >
-            {loading ? 'Criando...' : 'Criar Lote'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Criando...
+              </span>
+            ) : (
+              'Criar Lote'
+            )}
           </button>
           <button
             type="button"

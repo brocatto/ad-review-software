@@ -1,6 +1,6 @@
-# Plataforma de Aprovação de Criativos
+# AdReviewOS
 
-"Tinder de Aprovação de Anúncios" - Uma plataforma B2B para acelerar o fluxo de aprovação de criativos entre times de marketing e clientes.
+Plataforma de Aprovação de Criativos - Uma solução B2B para acelerar o fluxo de aprovação de criativos entre times de marketing e clientes.
 
 ## Stack
 
@@ -32,7 +32,7 @@ npm install
 Crie um banco PostgreSQL:
 
 ```sql
-CREATE DATABASE tinder_ad_software;
+CREATE DATABASE adreviewos;
 ```
 
 ### 3. Configure variáveis de ambiente
@@ -41,7 +41,7 @@ O arquivo `.env` já está configurado para desenvolvimento local. Ajuste se nec
 
 ```bash
 # backend/.env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/tinder_ad_software?schema=public"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/adreviewos?schema=public"
 ```
 
 ### 4. Execute as migrações e seed
@@ -71,7 +71,7 @@ npm run dev
 ## Acesso
 
 - **Painel Admin:** http://localhost:5173
-- **Credenciais:** admin@adverse.com / admin123
+- **Credenciais:** admin@adreviewos.com / admin123
 
 ## Fluxo de Uso
 
