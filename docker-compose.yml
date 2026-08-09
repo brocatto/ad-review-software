@@ -1,15 +1,15 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      # Define POSTGRES_PASSWORD no .env em produção
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ad_review
     ports:
-      - "5432:5432"
+      # Acessível apenas a partir do próprio host (não exposto na rede)
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,24 +28,31 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ad_review?schema=public
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/ad_review?schema=public
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: 7d
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
-      SLACK_ENABLED: ${SLACK_ENABLED:-true}
+      SLACK_ENABLED: ${SLACK_ENABLED:-false}
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@adverse.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+    volumes:
+      # Persiste uploads locais quando Cloudinary não está configurado
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
-    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
+    command: sh -c "npx prisma migrate deploy && node dist/main.js"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
     restart: always
     ports:
       - "80:80"
@@ -54,3 +61,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

@@ -17,6 +17,7 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   batches          Batch[]
+  clients          Client[]
   adjustmentStatus InternalAdjustmentStatus[]
   activityLogs     ActivityLog[]
   creativeVersions CreativeVersion[]
@@ -30,11 +31,14 @@ model Client {
   email         String?
   company       String?
   contactPerson String?  @map("contact_person")
+  userId        String   @map("user_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   batches Batch[]
 
+  @@index([userId])
   @@map("clients")
 }
 

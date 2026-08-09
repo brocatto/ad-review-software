@@ -3,7 +3,9 @@ import type { AuthResponse, Batch, Client, Creative, ActivityLog } from '../type
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-export const getFileUrl = (path: string) => `${API_URL}${path}`;
+// Cloudinary returns absolute URLs; local uploads return relative /uploads paths
+export const getFileUrl = (path: string) =>
+  path.startsWith('http') ? path : `${API_URL}${path}`;
 
 const api = axios.create({
   baseURL: API_URL,

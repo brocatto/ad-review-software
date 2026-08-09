@@ -64,6 +64,8 @@ SLACK_ENABLED=true
 CLOUDINARY_CLOUD_NAME=seu-cloud-name
 CLOUDINARY_API_KEY=sua-api-key
 CLOUDINARY_API_SECRET=seu-api-secret
+SEED_ADMIN_EMAIL=seu-email@empresa.com
+SEED_ADMIN_PASSWORD=[senha forte, mínimo 8 caracteres]
 ```
 
 5. Adicionar PostgreSQL:
@@ -75,12 +77,10 @@ CLOUDINARY_API_SECRET=seu-api-secret
    npx prisma migrate deploy
    ```
 
-7. Seed inicial:
+7. Seed inicial (cria o usuário admin com SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD):
    ```bash
    npm run db:seed
    ```
-   - Email: admin@adverse.com
-   - Senha: admin123
 
 #### Frontend
 
@@ -112,12 +112,16 @@ VITE_API_URL=https://sua-api.railway.app
 
 ```env
 JWT_SECRET=gere-um-secret-forte-aqui
+POSTGRES_PASSWORD=senha-forte-do-banco
 FRONTEND_URL=http://seu-dominio.com
+VITE_API_URL=http://seu-dominio.com:3000
 SLACK_WEBHOOK_URL=sua-webhook-url
 SLACK_ENABLED=true
 CLOUDINARY_CLOUD_NAME=seu-cloud-name
 CLOUDINARY_API_KEY=sua-api-key
 CLOUDINARY_API_SECRET=seu-api-secret
+SEED_ADMIN_EMAIL=seu-email@empresa.com
+SEED_ADMIN_PASSWORD=senha-forte-de-admin
 ```
 
 4. Execute:
@@ -126,10 +130,9 @@ CLOUDINARY_API_SECRET=seu-api-secret
 docker-compose up -d
 ```
 
-5. Run migrations:
+5. Migrations rodam automaticamente no start do backend. Para o seed do admin:
 
 ```bash
-docker-compose exec backend npx prisma migrate deploy
 docker-compose exec backend npm run db:seed
 ```
 
@@ -146,10 +149,10 @@ Após deploy e seed:
 
 **Admin Login:**
 - URL: `https://seu-frontend.vercel.app/login`
-- Email: `admin@adverse.com`
-- Senha: `admin123`
+- Email: valor de `SEED_ADMIN_EMAIL`
+- Senha: valor de `SEED_ADMIN_PASSWORD`
 
-**IMPORTANTE:** Altere a senha após primeiro login!
+O seed exige `SEED_ADMIN_PASSWORD` (mínimo 8 caracteres) — não existe senha padrão.
 
 ---
 
@@ -185,6 +188,14 @@ Após deploy e seed:
 ### Database Connection Failed
 - Verifique DATABASE_URL no Railway
 - Confirm que PostgreSQL addon está ativo
+
+### Migrate deploy falha com P3005 (banco não vazio)
+As migrations foram recriadas do zero para PostgreSQL. Se o banco já tinha
+tabelas criadas por uma versão anterior (ex.: via `prisma db push`), marque a
+migration inicial como aplicada (baseline) em vez de recriar o banco:
+```bash
+npx prisma migrate resolve --applied 20260809000000_init
+```
 
 ### CORS Error
 - Adicione URL do frontend em FRONTEND_URL

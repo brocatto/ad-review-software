@@ -73,7 +73,7 @@ export class BatchesService {
     });
   }
 
-  async findOne(id: string, userId?: string) {
+  async findOne(id: string, userId: string) {
     const batch = await this.prisma.batch.findUnique({
       where: { id },
       include: {
@@ -103,8 +103,7 @@ export class BatchesService {
       throw new NotFoundException('Batch not found');
     }
 
-    // If userId provided, verify ownership
-    if (userId && batch.createdByUserId !== userId) {
+    if (batch.createdByUserId !== userId) {
       throw new ForbiddenException('Access denied');
     }
 

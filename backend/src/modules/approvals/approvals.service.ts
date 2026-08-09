@@ -25,17 +25,19 @@ export class ApprovalsService {
       throw new NotFoundException('Creative not found in this batch');
     }
 
-    if (creative.approval?.status !== 'PENDING') {
-      throw new BadRequestException('Creative already has a decision');
-    }
-
-    await this.prisma.approval.update({
-      where: { creativeId: approveDto.creativeId },
+    // Atomic transition: only succeeds if the approval is still PENDING,
+    // so concurrent/duplicate requests cannot double-decide.
+    const result = await this.prisma.approval.updateMany({
+      where: { creativeId: approveDto.creativeId, status: 'PENDING' },
       data: {
         status: 'APPROVED',
         feedbackProvidedAt: new Date(),
       },
     });
+
+    if (result.count === 0) {
+      throw new BadRequestException('Creative already has a decision');
+    }
 
     await this.batchesService.updateCounts(batch.id);
 
@@ -57,18 +59,18 @@ export class ApprovalsService {
       throw new NotFoundException('Creative not found in this batch');
     }
 
-    if (creative.approval?.status !== 'PENDING') {
-      throw new BadRequestException('Creative already has a decision');
-    }
-
-    await this.prisma.approval.update({
-      where: { creativeId: rejectDto.creativeId },
+    const result = await this.prisma.approval.updateMany({
+      where: { creativeId: rejectDto.creativeId, status: 'PENDING' },
       data: {
         status: 'REJECTED',
         feedbackText: rejectDto.feedback,
         feedbackProvidedAt: new Date(),
       },
     });
+
+    if (result.count === 0) {
+      throw new BadRequestException('Creative already has a decision');
+    }
 
     await this.batchesService.updateCounts(batch.id);
 

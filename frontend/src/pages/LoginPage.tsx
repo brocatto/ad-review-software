@@ -79,10 +79,6 @@ export function LoginPage() {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Credenciais de teste: admin@adverse.com / admin123
-        </p>
       </div>
     </div>
   );

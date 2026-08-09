@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, PlusCircle, LogOut, CreditCard } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, PlusCircle, LogOut } from 'lucide-react';
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -44,12 +44,6 @@ export function AdminLayout() {
               <NavLink to="/batches/new" className={navLinkClass}>
                 <PlusCircle size={20} />
                 Criar Novo Lote
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/billing" className={navLinkClass}>
-                <CreditCard size={20} />
-                Faturamento
               </NavLink>
             </li>
           </ul>

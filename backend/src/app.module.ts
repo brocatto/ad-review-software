@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './config/prisma.module';
 import { CloudinaryModule } from './config/cloudinary.module';
 import { HealthController } from './health.controller';
@@ -18,6 +19,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnv,
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000, // 1 minute

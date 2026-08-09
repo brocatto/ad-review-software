@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -10,27 +10,27 @@ export class ClientsController {
   constructor(private clientsService: ClientsService) {}
 
   @Post()
-  create(@Body() createClientDto: CreateClientDto) {
-    return this.clientsService.create(createClientDto);
+  create(@Body() createClientDto: CreateClientDto, @Request() req: any) {
+    return this.clientsService.create(createClientDto, req.user.id);
   }
 
   @Get()
-  findAll() {
-    return this.clientsService.findAll();
+  findAll(@Request() req: any) {
+    return this.clientsService.findAll(req.user.id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.clientsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.clientsService.findOne(id, req.user.id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
-    return this.clientsService.update(id, updateClientDto);
+  update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto, @Request() req: any) {
+    return this.clientsService.update(id, updateClientDto, req.user.id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.clientsService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.clientsService.remove(id, req.user.id);
   }
 }

@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -16,22 +16,24 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Build application
+# Build application (outputs to dist/main.js)
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+ENV NODE_ENV=production
+
+# Copy package files and prisma schema/migrations (needed for migrate deploy)
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Install production dependencies only (includes prisma CLI for migrate deploy)
+RUN npm ci --omit=dev
 
-# Copy Prisma schema and generate client
+# Generate Prisma Client against the production node_modules
 RUN npx prisma generate
 
 # Copy built application from builder
@@ -41,4 +43,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Start application
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]

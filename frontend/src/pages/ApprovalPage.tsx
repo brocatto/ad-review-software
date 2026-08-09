@@ -13,10 +13,18 @@ export function ApprovalPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [pendingCreative, setPendingCreative] = useState<Creative | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     if (accessToken) loadBatch();
   }, [accessToken]);
+
+  useEffect(() => {
+    if (!actionError) return;
+    const timer = setTimeout(() => setActionError(''), 4000);
+    return () => clearTimeout(timer);
+  }, [actionError]);
 
   const loadBatch = async () => {
     try {
@@ -40,33 +48,41 @@ export function ApprovalPage() {
   const completed = totalCreatives - totalPending;
 
   const handleApprove = async () => {
-    if (!currentCreative || !accessToken) return;
+    if (!currentCreative || !accessToken || submitting) return;
 
+    setSubmitting(true);
     try {
       await approveCreative(accessToken, currentCreative.id);
-      loadBatch();
+      await loadBatch();
     } catch (error) {
       console.error('Error approving:', error);
+      setActionError('Não foi possível registrar a aprovação. Tente novamente.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleReject = () => {
-    if (!currentCreative) return;
+    if (!currentCreative || submitting) return;
     setPendingCreative(currentCreative);
     setShowFeedback(true);
   };
 
   const submitRejection = async () => {
-    if (!pendingCreative || !accessToken) return;
+    if (!pendingCreative || !accessToken || submitting) return;
 
+    setSubmitting(true);
     try {
       await rejectCreative(accessToken, pendingCreative.id, feedback);
       setShowFeedback(false);
       setFeedback('');
       setPendingCreative(null);
-      loadBatch();
+      await loadBatch();
     } catch (error) {
       console.error('Error rejecting:', error);
+      setActionError('Não foi possível registrar a reprovação. Tente novamente.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -110,6 +126,15 @@ export function ApprovalPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary flex flex-col">
+      {/* Error toast */}
+      {actionError && (
+        <div className="fixed top-4 inset-x-4 z-[1100] flex justify-center">
+          <div className="bg-status-error/20 border border-status-error/40 text-status-error backdrop-blur-md px-4 py-3 rounded-2xl text-sm text-center max-w-sm w-full">
+            {actionError}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="p-4 text-center">
         <h1 className="text-text-primary font-medium">{batch.name}</h1>
@@ -143,13 +168,15 @@ export function ApprovalPage() {
       <div className="p-6 flex justify-center gap-8">
         <button
           onClick={handleReject}
-          className="w-16 h-16 bg-glass rounded-full border border-glass-border flex items-center justify-center text-status-error hover:bg-status-error/20 hover:border-status-error/40 transition-all duration-200"
+          disabled={submitting}
+          className="w-16 h-16 bg-glass rounded-full border border-glass-border flex items-center justify-center text-status-error hover:bg-status-error/20 hover:border-status-error/40 transition-all duration-200 disabled:opacity-40"
         >
           <X size={32} />
         </button>
         <button
           onClick={handleApprove}
-          className="w-16 h-16 bg-glass rounded-full border border-glass-border flex items-center justify-center text-status-success hover:bg-status-success/20 hover:border-status-success/40 transition-all duration-200"
+          disabled={submitting}
+          className="w-16 h-16 bg-glass rounded-full border border-glass-border flex items-center justify-center text-status-success hover:bg-status-success/20 hover:border-status-success/40 transition-all duration-200 disabled:opacity-40"
         >
           <Check size={32} />
         </button>
@@ -187,9 +214,10 @@ export function ApprovalPage() {
               </button>
               <button
                 onClick={submitRejection}
-                className="btn btn-primary flex-1 !bg-status-error/20 !border-status-error/30 !text-status-error hover:!bg-status-error/30"
+                disabled={submitting}
+                className="btn btn-primary flex-1 !bg-status-error/20 !border-status-error/30 !text-status-error hover:!bg-status-error/30 disabled:opacity-50"
               >
-                Reprovar
+                {submitting ? 'Enviando...' : 'Reprovar'}
               </button>
             </div>
           </motion.div>

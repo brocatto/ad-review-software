@@ -53,6 +53,7 @@ prisma/migrations/*_migration_lock.toml
 .env.*.local
 *.key
 *.pem
+.seed-credentials.local
 
 # Dependencies (AIOS)
 node_modules
