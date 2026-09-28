@@ -80,9 +80,11 @@ export function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Credenciais de teste: admin@adverse.com / admin123
-        </p>
+        {import.meta.env.DEV && (
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Credenciais de teste: admin@adverse.com / admin123
+          </p>
+        )}
       </div>
     </div>
   );

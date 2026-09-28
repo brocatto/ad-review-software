@@ -1,8 +1,29 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, Upload, RefreshCw } from 'lucide-react';
-import { getBatch, updateAdjustmentStatus, uploadRevision, getFileUrl } from '../lib/api';
-import type { Batch, Creative } from '../types';
+import {
+  ArrowLeft,
+  ExternalLink,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Upload,
+  RefreshCw,
+  Pencil,
+  MessageCircle,
+  Mail,
+  History,
+} from 'lucide-react';
+import {
+  getBatch,
+  updateAdjustmentStatus,
+  uploadRevision,
+  updateCreativeName,
+  getCreativeActivityLogs,
+  getFileUrl,
+  getErrorMessage,
+} from '../lib/api';
+import { describeActivity, formatDateTime } from '../lib/activity';
+import type { ActivityLog, Batch, Creative } from '../types';
 
 export function BatchDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -12,12 +33,12 @@ export function BatchDetailPage() {
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [timelineId, setTimelineId] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<ActivityLog[]>([]);
 
-  useEffect(() => {
-    if (id) loadBatch();
-  }, [id]);
-
-  const loadBatch = async () => {
+  const loadBatch = useCallback(async () => {
     try {
       const data = await getBatch(id!);
       setBatch(data);
@@ -26,13 +47,64 @@ export function BatchDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) loadBatch();
+  }, [id, loadBatch]);
+
+  const approvalLink = batch ? `${window.location.origin}/approve/${batch.accessToken}` : '';
+  const shareMessage = batch
+    ? `Olá! Os criativos do lote "${batch.name}" estão prontos para sua aprovação: ${approvalLink}`
+    : '';
 
   const copyLink = () => {
-    if (!batch) return;
-    const link = `${window.location.origin}/approve/${batch.accessToken}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(approvalLink);
     alert('Link copiado!');
+  };
+
+  const shareWhatsApp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`, '_blank', 'noopener');
+  };
+
+  const shareEmail = () => {
+    if (!batch) return;
+    const subject = encodeURIComponent(`Aprovação de criativos: ${batch.name}`);
+    const body = encodeURIComponent(shareMessage);
+    window.location.href = `mailto:${batch.client.email || ''}?subject=${subject}&body=${body}`;
+  };
+
+  const startRename = (creative: Creative) => {
+    setEditingId(creative.id);
+    setEditingName(creative.name);
+  };
+
+  const saveRename = async () => {
+    const name = editingName.trim();
+    const creative = batch?.creatives?.find((c) => c.id === editingId);
+    setEditingId(null);
+    if (!creative || !name || name === creative.name) return;
+
+    try {
+      await updateCreativeName(creative.id, name);
+      loadBatch();
+    } catch (error) {
+      alert(getErrorMessage(error, 'Erro ao renomear criativo'));
+    }
+  };
+
+  const toggleTimeline = async (creativeId: string) => {
+    if (timelineId === creativeId) {
+      setTimelineId(null);
+      return;
+    }
+    setTimelineId(creativeId);
+    setTimeline([]);
+    try {
+      setTimeline(await getCreativeActivityLogs(creativeId));
+    } catch (error) {
+      console.error('Error loading timeline:', error);
+    }
   };
 
   const handleAdjustmentChange = async (creativeId: string, status: string) => {
@@ -81,21 +153,6 @@ export function BatchDetailPage() {
     }
   };
 
-  const getAdjustmentLabel = (status: string) => {
-    switch (status) {
-      case 'NOT_STARTED':
-        return 'Não iniciado';
-      case 'IN_PROGRESS':
-        return 'Em execução';
-      case 'ADJUSTED':
-        return 'Ajustado';
-      case 'RESENT':
-        return 'Reenviado';
-      default:
-        return status;
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -131,10 +188,20 @@ export function BatchDetailPage() {
             <p className="text-gray-500">{batch.client.name}</p>
           </div>
         </div>
-        <button onClick={copyLink} className="btn btn-secondary flex items-center gap-2">
-          <ExternalLink size={16} />
-          Copiar Link
-        </button>
+        <div className="flex gap-2">
+          <button onClick={shareWhatsApp} className="btn btn-secondary flex items-center gap-2">
+            <MessageCircle size={16} />
+            WhatsApp
+          </button>
+          <button onClick={shareEmail} className="btn btn-secondary flex items-center gap-2">
+            <Mail size={16} />
+            E-mail
+          </button>
+          <button onClick={copyLink} className="btn btn-secondary flex items-center gap-2">
+            <ExternalLink size={16} />
+            Copiar Link
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -202,7 +269,30 @@ export function BatchDetailPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       {getStatusIcon(creative.approval?.status || 'PENDING')}
-                      <span className="font-medium">{creative.name}</span>
+                      {editingId === creative.id ? (
+                        <input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onBlur={saveRename}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveRename();
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          className="text-sm border border-gray-200 rounded px-2 py-1 font-medium"
+                          autoFocus
+                        />
+                      ) : (
+                        <>
+                          <span className="font-medium">{creative.name}</span>
+                          <button
+                            onClick={() => startRename(creative)}
+                            className="p-1 text-gray-400 hover:text-black"
+                            title="Renomear"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </>
+                      )}
                       {creative.revisionCount > 0 && (
                         <span className="text-xs text-gray-500 flex items-center gap-1">
                           <RefreshCw size={12} />
@@ -244,6 +334,26 @@ export function BatchDetailPage() {
                           Enviar Revisão
                         </button>
                       </div>
+                    )}
+
+                    <button
+                      onClick={() => toggleTimeline(creative.id)}
+                      className="mt-3 flex items-center gap-1 text-sm text-gray-500 hover:text-black"
+                    >
+                      <History size={14} />
+                      {timelineId === creative.id ? 'Ocultar linha do tempo' : 'Linha do tempo'}
+                    </button>
+
+                    {timelineId === creative.id && (
+                      <ol className="mt-3 border-l border-gray-200 pl-4 space-y-2">
+                        {timeline.map((log) => (
+                          <li key={log.id} className="text-sm">
+                            <span className="text-gray-400 mr-2">{formatDateTime(log.createdAt)}</span>
+                            <span className="text-gray-700">{describeActivity(log)}</span>
+                            {log.user && <span className="text-gray-400"> · {log.user.fullName}</span>}
+                          </li>
+                        ))}
+                      </ol>
                     )}
                   </div>
                 </div>

@@ -36,12 +36,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
-# Uploads
-uploads/*
-!uploads/.gitkeep
-
-# Prisma
-prisma/migrations/*_migration_lock.toml
+# Uploads (local file storage)
+**/uploads/*
+!**/uploads/.gitkeep
 
 # Database
 *.db

@@ -1,9 +1,18 @@
 import axios from 'axios';
-import type { AuthResponse, Batch, Client, Creative, ActivityLog } from '../types';
+import type { AuthResponse, Batch, Client, Creative, ActivityLog, User } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-export const getFileUrl = (path: string) => `${API_URL}${path}`;
+// Cloudinary returns absolute URLs; local storage returns paths like /uploads/x.jpg
+export const getFileUrl = (path: string) => (/^https?:\/\//.test(path) ? path : `${API_URL}${path}`);
+
+export const getCurrentUser = (): User | null => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    return null;
+  }
+};
 
 const api = axios.create({
   baseURL: API_URL,
@@ -20,7 +29,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // A 401 from the login form means wrong credentials, not an expired session
+    const isLoginRequest = error.config?.url === '/auth/login';
+    if (error.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -37,6 +48,26 @@ export const login = async (email: string, password: string): Promise<AuthRespon
 
 export const verifyToken = async () => {
   const { data } = await api.get('/auth/verify');
+  return data;
+};
+
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  await api.patch('/auth/password', { currentPassword, newPassword });
+};
+
+// Users (admin only)
+export const getUsers = async (): Promise<User[]> => {
+  const { data } = await api.get('/users');
+  return data;
+};
+
+export const createUser = async (user: {
+  email: string;
+  fullName: string;
+  password: string;
+  role: User['role'];
+}): Promise<User> => {
+  const { data } = await api.post('/users', user);
   return data;
 };
 
@@ -117,6 +148,24 @@ export const uploadRevision = async (creativeId: string, file: File): Promise<Cr
 export const getActivityLogs = async (batchId: string): Promise<ActivityLog[]> => {
   const { data } = await api.get(`/activity-logs/batch/${batchId}`);
   return data;
+};
+
+export const getCreativeActivityLogs = async (creativeId: string): Promise<ActivityLog[]> => {
+  const { data } = await api.get(`/activity-logs/creative/${creativeId}`);
+  return data;
+};
+
+export const getHistory = async (before?: string, limit = 50): Promise<ActivityLog[]> => {
+  const { data } = await api.get('/activity-logs', { params: { before, limit } });
+  return data;
+};
+
+/** Human-readable message from an API error (Nest returns string or string[]). */
+export const getErrorMessage = (error: unknown, fallback: string): string => {
+  const message = (error as { response?: { data?: { message?: string | string[] } } })?.response
+    ?.data?.message;
+  if (Array.isArray(message)) return message.join(', ');
+  return message || fallback;
 };
 
 // Public (Client Approval)

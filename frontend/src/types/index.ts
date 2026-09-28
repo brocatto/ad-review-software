@@ -3,6 +3,7 @@ export interface User {
   email: string;
   fullName: string;
   role: 'ADMIN' | 'MANAGER';
+  createdAt?: string;
 }
 
 export interface Client {
@@ -90,6 +91,11 @@ export interface ActivityLog {
   creative?: {
     id: string;
     name: string;
+  };
+  batch?: {
+    id: string;
+    name: string;
+    client: { id: string; name: string };
   };
 }
 

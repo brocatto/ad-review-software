@@ -1,223 +1,110 @@
 # Guia de Deploy - Ad Review Software
 
-## 🚀 Preparação Concluída
+Recomendado: **backend + PostgreSQL no Railway**, **frontend no Vercel**, **arquivos no Cloudinary**.
 
-O projeto está pronto para produção com as seguintes melhorias implementadas:
+## Antes de começar
 
-### ✅ Backend
-- ✓ PostgreSQL (migrado de SQLite)
-- ✓ Cloudinary para uploads (com fallback local)
-- ✓ Security headers (Helmet)
-- ✓ CORS configurável
-- ✓ Rate limiting (100 req/min)
-- ✓ Health check endpoint
-- ✓ Docker support
-
-### ✅ Frontend
-- ✓ URLs configuráveis via .env
-- ✓ Docker + Nginx
-- ✓ SPA routing
-- ✓ Asset caching
+- **Cloudinary é obrigatório no Railway.** O disco do container é apagado a cada deploy, então uploads locais se perdem. Crie uma conta gratuita em https://cloudinary.com e anote Cloud Name, API Key e API Secret.
+- Gere um `JWT_SECRET` forte (o backend não sobe em produção com menos de 32 caracteres):
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+  ```
+- Escolha a senha do primeiro admin (`ADMIN_PASSWORD`, mínimo 8 caracteres).
 
 ---
 
-## 📋 Passo a Passo para Deploy
+## 1. Backend + banco (Railway)
 
-### 1. Push do Código (AÇÃO NECESSÁRIA)
-
-O commit foi criado, mas o push falhou por falta de credenciais. Execute:
-
-```bash
-cd C:\Users\joao_\Desktop\coding\tinder-ad-software
-git push origin master
-```
-
-### 2. Configurar Cloudinary
-
-1. Acesse: https://cloudinary.com/users/register/free
-2. Crie uma conta gratuita
-3. No dashboard, copie:
-   - Cloud Name
-   - API Key
-   - API Secret
-
-### 3. Deploy Recomendado: Railway
-
-#### Backend + Database
-
-1. Acesse: https://railway.app
-2. New Project → Deploy from GitHub
-3. Selecione: `brocatto/ad-review-software`
-4. Railway vai detectar automaticamente o Dockerfile
-
-**Variáveis de Ambiente no Railway:**
+1. https://railway.app → New Project → Deploy from GitHub → `brocatto/ad-review-software`.
+2. Em Settings do serviço, defina **Root Directory = `backend`** (o Railway usa o `Dockerfile`).
+3. New → Database → PostgreSQL. O Railway preenche `DATABASE_URL`.
+4. Variáveis de ambiente do serviço:
 
 ```env
 NODE_ENV=production
-PORT=3000
-DATABASE_URL=[Railway vai gerar automaticamente ao adicionar PostgreSQL]
-JWT_SECRET=[usar: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"]
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+JWT_SECRET=<valor gerado acima>
 JWT_EXPIRATION=7d
-FRONTEND_URL=https://seu-dominio.vercel.app
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+FRONTEND_URL=https://seu-app.vercel.app
+TRUST_PROXY=1
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 SLACK_ENABLED=true
-CLOUDINARY_CLOUD_NAME=seu-cloud-name
-CLOUDINARY_API_KEY=sua-api-key
-CLOUDINARY_API_SECRET=seu-api-secret
+ADMIN_EMAIL=voce@suaempresa.com
+ADMIN_PASSWORD=<senha forte>
 ```
 
-5. Adicionar PostgreSQL:
-   - Click em "New" → Database → PostgreSQL
-   - Railway vai configurar DATABASE_URL automaticamente
+`TRUST_PROXY=1` faz o limite de requisições usar o IP real de cada usuário (sem ele, todos compartilham o IP do proxy do Railway).
 
-6. Run migrations:
+5. Deploy. **As migrations rodam sozinhas** a cada start (`prisma migrate deploy` no `CMD` do Dockerfile).
+6. Crie o admin uma única vez (Railway → serviço → ⋯ → Run command, ou `railway run`):
    ```bash
-   npx prisma migrate deploy
+   npm run db:seed:prod
    ```
+   O seed nunca sobrescreve um usuário existente. Depois do primeiro login, a senha pode ser trocada em **Configurações**.
 
-7. Seed inicial:
-   ```bash
-   npm run db:seed
+7. Confira: `GET https://sua-api.railway.app/health` deve responder com o banco conectado.
+
+## 2. Frontend (Vercel)
+
+1. https://vercel.com → New Project → importe o repositório.
+2. **Root Directory = `frontend`**, Framework = Vite (build `npm run build`, output `dist`).
+3. Variável de ambiente (usada no build, então redeploy após mudar):
+   ```env
+   VITE_API_URL=https://sua-api.railway.app
    ```
-   - Email: admin@adverse.com
-   - Senha: admin123
-
-#### Frontend
-
-1. Acesse: https://vercel.com
-2. New Project → Import Git Repository
-3. Selecione: `brocatto/ad-review-software`
-4. Root Directory: `frontend`
-5. Framework: Vite
-6. Build Command: `npm run build`
-7. Output Directory: `dist`
-
-**Variáveis de Ambiente no Vercel:**
-
-```env
-VITE_API_URL=https://sua-api.railway.app
-```
-
-8. Deploy!
+4. Deploy. O `frontend/vercel.json` já redireciona todas as rotas para o SPA, então os links `/approve/<token>` abertos direto pelo cliente funcionam.
+5. Volte no Railway e confira se `FRONTEND_URL` é exatamente a URL do Vercel (CORS e links do Slack dependem dela).
 
 ---
 
-## 🐳 Alternativa: Deploy com Docker Compose
+## Alternativa: Docker Compose (VPS)
 
-### Servidor Local/VPS
-
-1. Instale Docker e Docker Compose
-2. Clone o repositório
-3. Crie `.env` na raiz:
+Crie `.env` na raiz:
 
 ```env
-JWT_SECRET=gere-um-secret-forte-aqui
+JWT_SECRET=<64+ caracteres aleatórios>
+ADMIN_PASSWORD=<senha forte>
 FRONTEND_URL=http://seu-dominio.com
-SLACK_WEBHOOK_URL=sua-webhook-url
-SLACK_ENABLED=true
-CLOUDINARY_CLOUD_NAME=seu-cloud-name
-CLOUDINARY_API_KEY=sua-api-key
-CLOUDINARY_API_SECRET=seu-api-secret
+VITE_API_URL=http://seu-dominio.com:3000
+SLACK_WEBHOOK_URL=
+SLACK_ENABLED=false
+# Opcional: sem Cloudinary, os uploads ficam no volume `uploads`
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 ```
-
-4. Execute:
 
 ```bash
-docker-compose up -d
+docker compose up -d --build
+docker compose exec backend npm run db:seed:prod
 ```
 
-5. Run migrations:
-
-```bash
-docker-compose exec backend npx prisma migrate deploy
-docker-compose exec backend npm run db:seed
-```
-
-6. Acesse:
-   - Frontend: http://localhost
-   - Backend: http://localhost:3000
-   - Health: http://localhost:3000/health
+- Frontend: http://localhost · Backend: http://localhost:3000 · Health: http://localhost:3000/health
+- Se colocar um proxy reverso (nginx, Caddy) na frente do backend, adicione `TRUST_PROXY=1` ao serviço `backend`.
 
 ---
 
-## 🔐 Primeiro Acesso
+## Checklist pré-produção
 
-Após deploy e seed:
+- [ ] Cloudinary configurado (obrigatório no Railway)
+- [ ] `JWT_SECRET` forte, `ADMIN_PASSWORD` definido
+- [ ] `FRONTEND_URL` (backend) e `VITE_API_URL` (frontend) apontando um para o outro
+- [ ] `TRUST_PROXY=1` no Railway
+- [ ] `npm run db:seed:prod` executado uma vez
+- [ ] Login, upload, link público no celular (aprovar e reprovar), revisão e notificação no Slack testados
 
-**Admin Login:**
-- URL: `https://seu-frontend.vercel.app/login`
-- Email: `admin@adverse.com`
-- Senha: `admin123`
+## Troubleshooting
 
-**IMPORTANTE:** Altere a senha após primeiro login!
+- **Backend não sobe com "JWT_SECRET must be set..."**: o segredo está vazio, curto ou é o valor de exemplo.
+- **CORS error**: `FRONTEND_URL` precisa ser exatamente a origem do frontend (com `https://`, sem barra no final).
+- **Imagens quebradas**: sem Cloudinary no Railway, os arquivos somem no próximo deploy. Configure o Cloudinary e reenvie.
+- **"Too Many Requests" para vários usuários ao mesmo tempo**: falta `TRUST_PROXY=1`.
+- **Slack**: teste o webhook com `curl -X POST -H 'Content-type: application/json' --data '{"text":"teste"}' $SLACK_WEBHOOK_URL` e confira `SLACK_ENABLED=true`.
 
----
+## Limites
 
-## 📊 Endpoints Úteis
-
-- `GET /health` - Status da aplicação e DB
-- `GET /` - Info da API
-- `POST /auth/login` - Login
-- `GET /batches` - Listar lotes
-
----
-
-## ⚠️ Checklist Pré-Produção
-
-- [ ] Push do código para GitHub
-- [ ] Conta Cloudinary criada
-- [ ] JWT_SECRET gerado (128 chars)
-- [ ] Deploy backend no Railway
-- [ ] PostgreSQL adicionado no Railway
-- [ ] Migrations executadas
-- [ ] Seed executado (admin criado)
-- [ ] Deploy frontend no Vercel
-- [ ] Variáveis de ambiente configuradas
-- [ ] Teste de login
-- [ ] Teste de upload de creative
-- [ ] Teste de aprovação (link público)
-- [ ] Notificação Slack funcionando
-
----
-
-## 🆘 Troubleshooting
-
-### Database Connection Failed
-- Verifique DATABASE_URL no Railway
-- Confirm que PostgreSQL addon está ativo
-
-### CORS Error
-- Adicione URL do frontend em FRONTEND_URL
-- Verifique se frontend está usando VITE_API_URL correta
-
-### Uploads Não Funcionam
-- Confirme credenciais Cloudinary
-- Teste health check endpoint
-
-### Notificações Slack Não Chegam
-- Teste webhook: `curl -X POST -H 'Content-type: application/json' --data '{"text":"teste"}' SLACK_WEBHOOK_URL`
-- Verifique SLACK_ENABLED=true
-
----
-
-## 📞 Próximos Passos
-
-1. Faça o push: `git push origin master`
-2. Configure Cloudinary
-3. Deploy no Railway (backend)
-4. Deploy no Vercel (frontend)
-5. Teste com seu time!
-
----
-
-## 💡 Custos Estimados (MVP/Teste)
-
-- Railway (Backend + PostgreSQL): **GRÁTIS** ($5 crédito/mês)
-- Vercel (Frontend): **GRÁTIS** (plan hobby)
-- Cloudinary: **GRÁTIS** (25GB storage, 25GB bandwidth/mês)
-
-**Total: $0/mês** para MVP com time pequeno 🎉
-
----
-
-Gerado automaticamente por Claude Code
+- Uploads: até 50 arquivos por envio e 100MB por arquivo (`MAX_FILE_SIZE`). O plano gratuito do Cloudinary aceita imagens de até 10MB e vídeos de até 100MB.
+- Rate limit: 300 req/min por IP; login e troca de senha, 10 req/min.

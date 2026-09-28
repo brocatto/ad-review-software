@@ -29,27 +29,27 @@ npm install
 
 ### 2. Configure o banco de dados
 
-Crie um banco PostgreSQL:
+Suba um PostgreSQL local (ou use um existente e crie o banco `tinder_ad_software`):
 
-```sql
-CREATE DATABASE tinder_ad_software;
+```bash
+docker compose up -d postgres
 ```
 
 ### 3. Configure variáveis de ambiente
 
-O arquivo `.env` já está configurado para desenvolvimento local. Ajuste se necessário:
-
 ```bash
-# backend/.env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/tinder_ad_software?schema=public"
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
+
+Ajuste `DATABASE_URL` se necessário. Sem as variáveis do Cloudinary, os uploads ficam em `backend/uploads/`.
 
 ### 4. Execute as migrações e seed
 
 ```bash
 cd backend
-npx prisma migrate dev
-npx prisma db seed
+npm run db:migrate
+npm run db:seed
 ```
 
 ## Executando
@@ -71,7 +71,7 @@ npm run dev
 ## Acesso
 
 - **Painel Admin:** http://localhost:5173
-- **Credenciais:** admin@adverse.com / admin123
+- **Credenciais (dev):** admin@adverse.com / admin123 (troque em Configurações)
 
 ## Fluxo de Uso
 
@@ -90,12 +90,11 @@ npm run dev
 │   │   ├── modules/   # Módulos (auth, batches, creatives, etc.)
 │   │   └── config/    # Configurações (Prisma, etc.)
 │   └── prisma/        # Schema e migrations
-├── frontend/          # React + Vite
-│   └── src/
-│       ├── pages/     # Páginas da aplicação
-│       ├── components/# Componentes reutilizáveis
-│       └── lib/       # API client e utilitários
-└── docs/              # Documentação adicional
+└── frontend/          # React + Vite
+    └── src/
+        ├── pages/     # Páginas da aplicação
+        ├── components/# Componentes reutilizáveis
+        └── lib/       # API client e utilitários
 ```
 
 ## Comandos Úteis
@@ -104,9 +103,16 @@ npm run dev
 # Backend
 npm run dev          # Desenvolvimento
 npm run build        # Build produção
+npm test             # Testes unitários (Jest)
+npm run lint         # ESLint
 npm run db:studio    # Prisma Studio (visualizar DB)
 
 # Frontend
 npm run dev          # Desenvolvimento
-npm run build        # Build produção
+npm run build        # Typecheck + build produção
+npm run lint         # ESLint
 ```
+
+## Deploy
+
+Veja [DEPLOY.md](DEPLOY.md).

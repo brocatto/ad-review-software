@@ -25,6 +25,22 @@ export class ActivityLogService {
     });
   }
 
+  /** Global history, newest first. `before` is the createdAt of the last item of the previous page. */
+  async findRecent(limit: number, before?: Date) {
+    return this.prisma.activityLog.findMany({
+      where: before ? { createdAt: { lt: before } } : undefined,
+      include: {
+        user: { select: { id: true, fullName: true } },
+        creative: { select: { id: true, name: true } },
+        batch: {
+          select: { id: true, name: true, client: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
   async findByBatch(batchId: string) {
     return this.prisma.activityLog.findMany({
       where: { batchId },

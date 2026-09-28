@@ -1,18 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, Plus } from 'lucide-react';
-import { getClients, createClient, createBatch, uploadCreatives } from '../lib/api';
+import { getClients, createClient, createBatch, uploadCreatives, getErrorMessage } from '../lib/api';
 import type { Client } from '../types';
+
+interface PendingFile {
+  file: File;
+  name: string;
+  preview?: string;
+}
 
 export function CreateBatchPage() {
   const [name, setName] = useState('');
   const [clientId, setClientId] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<PendingFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,7 +36,21 @@ export function CreateBatchPage() {
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles((prev) => [...prev, ...acceptedFiles]);
+    setFiles((prev) => [
+      ...prev,
+      ...acceptedFiles.map((file) => ({
+        file,
+        name: file.name,
+        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+      })),
+    ]);
+  }, []);
+
+  // Release image previews when leaving the page
+  const filesRef = useRef(files);
+  filesRef.current = files;
+  useEffect(() => {
+    return () => filesRef.current.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -41,20 +62,30 @@ export function CreateBatchPage() {
   });
 
   const removeFile = (index: number) => {
+    const removed = files[index];
+    if (removed.preview) URL.revokeObjectURL(removed.preview);
     setFiles(files.filter((_, i) => i !== index));
+  };
+
+  const renameFile = (index: number, name: string) => {
+    setFiles(files.map((f, i) => (i === index ? { ...f, name } : f)));
   };
 
   const handleCreateClient = async () => {
     if (!newClientName.trim()) return;
 
     try {
-      const client = await createClient({ name: newClientName });
+      const client = await createClient({
+        name: newClientName,
+        email: newClientEmail.trim() || undefined,
+      });
       setClients([client, ...clients]);
       setClientId(client.id);
       setNewClientName('');
+      setNewClientEmail('');
       setShowNewClient(false);
     } catch (error) {
-      console.error('Error creating client:', error);
+      alert(getErrorMessage(error, 'Erro ao criar cliente'));
     }
   };
 
@@ -66,11 +97,15 @@ export function CreateBatchPage() {
 
     try {
       const batch = await createBatch({ name, clientId });
-      await uploadCreatives(batch.id, files);
+      // The backend names each creative after the uploaded file name
+      const renamed = files.map(({ file, name }) =>
+        name.trim() && name !== file.name ? new File([file], name.trim(), { type: file.type }) : file,
+      );
+      await uploadCreatives(batch.id, renamed);
       navigate(`/batches/${batch.id}`);
     } catch (error) {
       console.error('Error creating batch:', error);
-      alert('Erro ao criar lote');
+      alert(getErrorMessage(error, 'Erro ao criar lote'));
     } finally {
       setLoading(false);
     }
@@ -110,6 +145,13 @@ export function CreateBatchPage() {
                 className="input flex-1"
                 placeholder="Nome do novo cliente"
                 autoFocus
+              />
+              <input
+                type="email"
+                value={newClientEmail}
+                onChange={(e) => setNewClientEmail(e.target.value)}
+                className="input flex-1"
+                placeholder="E-mail (opcional)"
               />
               <button
                 type="button"
@@ -174,23 +216,23 @@ export function CreateBatchPage() {
                 : 'Arraste arquivos ou clique para selecionar'}
             </p>
             <p className="text-sm text-gray-400 mt-2">
-              Imagens (PNG, JPG, GIF) e vídeos (MP4, WebM)
+              Imagens (PNG, JPG, GIF, WebP) e vídeos (MP4, WebM, MOV) · clique no nome para renomear
             </p>
           </div>
 
           {/* File List */}
           {files.length > 0 && (
             <div className="mt-4 space-y-2">
-              {files.map((file, index) => (
+              {files.map((item, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                 >
-                  <div className="flex items-center gap-3">
-                    {file.type.startsWith('image/') ? (
+                  <div className="flex items-center gap-3 flex-1">
+                    {item.preview ? (
                       <img
-                        src={URL.createObjectURL(file)}
-                        alt={file.name}
+                        src={item.preview}
+                        alt={item.name}
                         className="w-10 h-10 object-cover rounded"
                       />
                     ) : (
@@ -198,9 +240,13 @@ export function CreateBatchPage() {
                         VID
                       </div>
                     )}
-                    <span className="text-sm text-gray-700 truncate max-w-[200px]">
-                      {file.name}
-                    </span>
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => renameFile(index, e.target.value)}
+                      className="text-sm text-gray-700 bg-transparent border border-transparent hover:border-gray-200 focus:border-gray-300 focus:bg-white rounded px-2 py-1 flex-1 min-w-0 outline-none"
+                      title="Clique para renomear"
+                    />
                   </div>
                   <button
                     type="button"

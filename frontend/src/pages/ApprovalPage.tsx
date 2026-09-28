@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
@@ -14,11 +14,7 @@ export function ApprovalPage() {
   const [feedback, setFeedback] = useState('');
   const [pendingCreative, setPendingCreative] = useState<Creative | null>(null);
 
-  useEffect(() => {
-    if (accessToken) loadBatch();
-  }, [accessToken]);
-
-  const loadBatch = async () => {
+  const loadBatch = useCallback(async () => {
     try {
       const data = await getPublicBatch(accessToken!);
       setBatch(data);
@@ -28,7 +24,11 @@ export function ApprovalPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (accessToken) loadBatch();
+  }, [accessToken, loadBatch]);
 
   const pendingCreatives = batch?.creatives?.filter(
     (c) => c.approval?.status === 'PENDING'

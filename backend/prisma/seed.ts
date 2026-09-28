@@ -3,29 +3,38 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  // Create admin user
-  const passwordHash = await bcrypt.hash('admin123', 10);
+const isProduction = process.env.NODE_ENV === 'production';
 
+async function main() {
+  const email = process.env.ADMIN_EMAIL || 'admin@adverse.com';
+  const password = process.env.ADMIN_PASSWORD || (isProduction ? undefined : 'admin123');
+
+  if (!password || password.length < 8) {
+    throw new Error('Defina ADMIN_PASSWORD (mínimo 8 caracteres) para criar o admin em produção');
+  }
+
+  // Create admin user (never overwrites an existing user's password)
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@adverse.com' },
+    where: { email },
     update: {},
     create: {
-      email: 'admin@adverse.com',
-      passwordHash,
+      email,
+      passwordHash: await bcrypt.hash(password, 10),
       fullName: 'Admin User',
       role: 'ADMIN',
     },
   });
 
-  console.log('Created admin user:', admin.email);
+  console.log('Admin user:', admin.email);
 
-  // Create sample client
+  if (isProduction) return;
+
+  // Sample client for local development
   const client = await prisma.client.upsert({
-    where: { id: 'sample-client-id' },
+    where: { id: '00000000-0000-4000-8000-000000000001' },
     update: {},
     create: {
-      id: 'sample-client-id',
+      id: '00000000-0000-4000-8000-000000000001',
       name: 'Sample Client',
       email: 'client@example.com',
       company: 'Sample Company',

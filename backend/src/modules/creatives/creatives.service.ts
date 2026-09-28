@@ -1,39 +1,36 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { promises as fs } from 'fs';
 import { PrismaService } from '../../config/prisma.service';
 import { BatchesService } from '../batches/batches.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CloudinaryService } from '../../config/cloudinary.service';
+import { StorageService } from '../../config/storage.service';
 
 @Injectable()
 export class CreativesService {
-  private useCloudinary: boolean;
-
   constructor(
     private prisma: PrismaService,
     private batchesService: BatchesService,
     private activityLogService: ActivityLogService,
     private notificationsService: NotificationsService,
-    private cloudinaryService: CloudinaryService,
-    private configService: ConfigService,
-  ) {
-    this.useCloudinary = !!this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
-  }
+    private storageService: StorageService,
+  ) {}
 
   async create(batchId: string, files: Express.Multer.File[], userId: string) {
-    const batch = await this.batchesService.findOne(batchId);
+    let batch;
+    try {
+      batch = await this.batchesService.findOne(batchId);
+    } catch (error) {
+      await this.discardTempFiles(files);
+      throw error;
+    }
 
     const creatives = await Promise.all(
       files.map(async (file, index) => {
         const fileType = this.getFileType(file.mimetype);
+        const fileUrl = await this.storageService.save(file);
 
-        // Upload to Cloudinary or use local path
-        const fileUrl = this.useCloudinary
-          ? await this.cloudinaryService.uploadFile(file)
-          : `/uploads/${file.filename || 'local-file'}`;
-
-        const creative = await this.prisma.creative.create({
+        return this.prisma.creative.create({
           data: {
             batchId,
             name: file.originalname,
@@ -42,36 +39,17 @@ export class CreativesService {
             order: batch.creatives.length + index,
             currentVersion: 1,
             revisionCount: 0,
+            versions: {
+              create: { version: 1, fileUrl, fileType, uploadedByUserId: userId },
+            },
+            approval: {
+              create: { status: 'PENDING', reviewedVersion: 1 },
+            },
+            adjustmentStatus: {
+              create: { status: 'NOT_STARTED' },
+            },
           },
         });
-
-        // Create initial version
-        await this.prisma.creativeVersion.create({
-          data: {
-            creativeId: creative.id,
-            version: 1,
-            fileUrl,
-            fileType,
-            uploadedByUserId: userId,
-          },
-        });
-
-        await this.prisma.approval.create({
-          data: {
-            creativeId: creative.id,
-            status: 'PENDING',
-            reviewedVersion: 1,
-          },
-        });
-
-        await this.prisma.internalAdjustmentStatus.create({
-          data: {
-            creativeId: creative.id,
-            status: 'NOT_STARTED',
-          },
-        });
-
-        return creative;
       }),
     );
 
@@ -96,62 +74,56 @@ export class CreativesService {
   }
 
   async uploadRevision(id: string, file: Express.Multer.File, userId: string) {
-    const creative = await this.findOne(id);
-
-    // Check if creative was rejected
-    if (creative.approval?.status !== 'REJECTED') {
-      throw new Error('Só é possível enviar revisão para criativos reprovados');
+    let creative;
+    try {
+      creative = await this.findOne(id);
+      if (creative.approval?.status !== 'REJECTED') {
+        throw new BadRequestException('Só é possível enviar revisão para criativos reprovados');
+      }
+    } catch (error) {
+      await this.discardTempFiles([file]);
+      throw error;
     }
 
     const fileType = this.getFileType(file.mimetype);
-    const fileUrl = this.useCloudinary
-      ? await this.cloudinaryService.uploadFile(file)
-      : `/uploads/${file.filename || 'local-file'}`;
+    const fileUrl = await this.storageService.save(file);
     const newVersion = creative.currentVersion + 1;
 
-    // Create new version
-    await this.prisma.creativeVersion.create({
-      data: {
-        creativeId: id,
-        version: newVersion,
-        fileUrl,
-        fileType,
-        uploadedByUserId: userId,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      // Guard against two concurrent revisions of the same creative
+      const reset = await tx.approval.updateMany({
+        where: { creativeId: id, status: 'REJECTED' },
+        data: {
+          status: 'PENDING',
+          reviewedVersion: newVersion,
+          feedbackText: null,
+          feedbackProvidedAt: null,
+        },
+      });
+      if (reset.count === 0) {
+        throw new BadRequestException('Só é possível enviar revisão para criativos reprovados');
+      }
+
+      await tx.creativeVersion.create({
+        data: { creativeId: id, version: newVersion, fileUrl, fileType, uploadedByUserId: userId },
+      });
+
+      await tx.creative.update({
+        where: { id },
+        data: {
+          fileUrl,
+          fileType,
+          currentVersion: newVersion,
+          revisionCount: { increment: 1 },
+        },
+      });
+
+      await tx.internalAdjustmentStatus.update({
+        where: { creativeId: id },
+        data: { status: 'RESENT', updatedByUserId: userId },
+      });
     });
 
-    // Update creative with new file
-    await this.prisma.creative.update({
-      where: { id },
-      data: {
-        fileUrl,
-        fileType,
-        currentVersion: newVersion,
-        revisionCount: { increment: 1 },
-      },
-    });
-
-    // Reset approval to pending
-    await this.prisma.approval.update({
-      where: { creativeId: id },
-      data: {
-        status: 'PENDING',
-        reviewedVersion: newVersion,
-        feedbackText: null,
-        feedbackProvidedAt: null,
-      },
-    });
-
-    // Update adjustment status to resent
-    await this.prisma.internalAdjustmentStatus.update({
-      where: { creativeId: id },
-      data: {
-        status: 'RESENT',
-        updatedByUserId: userId,
-      },
-    });
-
-    // Update batch counts
     await this.batchesService.updateCounts(creative.batchId);
 
     await this.activityLogService.log({
@@ -196,13 +168,23 @@ export class CreativesService {
     return creative;
   }
 
-  async updateName(id: string, name: string) {
-    await this.findOne(id);
+  async updateName(id: string, name: string, userId: string) {
+    const creative = await this.findOne(id);
 
-    return this.prisma.creative.update({
+    const updated = await this.prisma.creative.update({
       where: { id },
       data: { name },
     });
+
+    await this.activityLogService.log({
+      batchId: creative.batchId,
+      creativeId: id,
+      userId,
+      action: 'CREATIVE_RENAMED',
+      details: { from: creative.name, to: name },
+    });
+
+    return updated;
   }
 
   async updateAdjustmentStatus(
@@ -216,7 +198,7 @@ export class CreativesService {
     const updated = await this.prisma.internalAdjustmentStatus.update({
       where: { creativeId: id },
       data: {
-        status: status as any,
+        status,
         notes,
         updatedByUserId: userId,
       },
@@ -233,14 +215,24 @@ export class CreativesService {
     return updated;
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId: string) {
     const creative = await this.findOne(id);
 
     await this.prisma.creative.delete({
       where: { id },
     });
 
+    await Promise.all(creative.versions.map((v) => this.storageService.remove(v.fileUrl)));
+
     await this.batchesService.updateCounts(creative.batchId);
+
+    // No creativeId: the creative's own logs are cascade-deleted with it
+    await this.activityLogService.log({
+      batchId: creative.batchId,
+      userId,
+      action: 'CREATIVE_DELETED',
+      details: { creativeName: creative.name },
+    });
 
     return { deleted: true };
   }
@@ -249,5 +241,9 @@ export class CreativesService {
     if (mimetype.startsWith('image/')) return 'IMAGE';
     if (mimetype.startsWith('video/')) return 'VIDEO';
     return 'TEXT';
+  }
+
+  private async discardTempFiles(files: Express.Multer.File[]) {
+    await Promise.all(files.map((f) => fs.rm(f.path, { force: true }).catch(() => undefined)));
   }
 }

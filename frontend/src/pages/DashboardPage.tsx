@@ -24,7 +24,6 @@ export function DashboardPage() {
   };
 
   const totalBatches = batches.length;
-  const totalCreatives = batches.reduce((sum, b) => sum + b.totalCreatives, 0);
   const totalApproved = batches.reduce((sum, b) => sum + b.approvedCount, 0);
   const totalRejected = batches.reduce((sum, b) => sum + b.rejectedCount, 0);
   const totalPending = batches.reduce((sum, b) => sum + b.pendingCount, 0);

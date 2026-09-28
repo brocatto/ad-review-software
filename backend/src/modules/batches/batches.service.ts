@@ -4,6 +4,7 @@ import { CreateBatchDto } from './dto/create-batch.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StorageService } from '../../config/storage.service';
 
 @Injectable()
 export class BatchesService {
@@ -11,6 +12,7 @@ export class BatchesService {
     private prisma: PrismaService,
     private activityLogService: ActivityLogService,
     private notificationsService: NotificationsService,
+    private storageService: StorageService,
   ) {}
 
   async create(createBatchDto: CreateBatchDto, userId: string) {
@@ -43,7 +45,7 @@ export class BatchesService {
     return batch;
   }
 
-  async findAll(userId?: string) {
+  async findAll() {
     return this.prisma.batch.findMany({
       include: {
         client: true,
@@ -137,18 +139,23 @@ export class BatchesService {
     const rejected = creatives.filter((c) => c.approval?.status === 'REJECTED').length;
     const pending = total - approved - rejected;
 
-    // Get current batch status before update
-    const currentBatch = await this.prisma.batch.findUnique({
-      where: { id: batchId },
-      select: { status: true },
-    });
-
     let status: 'PENDING' | 'PARTIAL' | 'COMPLETED' = 'PENDING';
     if (pending === 0 && total > 0) {
       status = 'COMPLETED';
     } else if (approved > 0 || rejected > 0) {
       status = 'PARTIAL';
     }
+
+    // Conditional update: only one concurrent caller can move the batch into
+    // COMPLETED, so the "completed" notification is sent exactly once.
+    const becameCompleted =
+      status === 'COMPLETED' &&
+      (
+        await this.prisma.batch.updateMany({
+          where: { id: batchId, status: { not: 'COMPLETED' } },
+          data: { status: 'COMPLETED' },
+        })
+      ).count === 1;
 
     const updatedBatch = await this.prisma.batch.update({
       where: { id: batchId },
@@ -165,8 +172,7 @@ export class BatchesService {
       },
     });
 
-    // Send notification when batch status changes to COMPLETED
-    if (status === 'COMPLETED' && currentBatch?.status !== 'COMPLETED') {
+    if (becameCompleted) {
       await this.notificationsService.notifyBatchCompleted({
         batchId,
         batchName: updatedBatch.name,
@@ -185,8 +191,17 @@ export class BatchesService {
   async remove(id: string) {
     await this.findOne(id);
 
-    return this.prisma.batch.delete({
+    const versions = await this.prisma.creativeVersion.findMany({
+      where: { creative: { batchId: id } },
+      select: { fileUrl: true },
+    });
+
+    const deleted = await this.prisma.batch.delete({
       where: { id },
     });
+
+    await Promise.all(versions.map((v) => this.storageService.remove(v.fileUrl)));
+
+    return deleted;
   }
 }

@@ -29,13 +29,18 @@ export class ApprovalsService {
       throw new BadRequestException('Creative already has a decision');
     }
 
-    await this.prisma.approval.update({
-      where: { creativeId: approveDto.creativeId },
+    // Conditional update so two concurrent decisions can't both succeed
+    const result = await this.prisma.approval.updateMany({
+      where: { creativeId: approveDto.creativeId, status: 'PENDING' },
       data: {
         status: 'APPROVED',
         feedbackProvidedAt: new Date(),
       },
     });
+
+    if (result.count === 0) {
+      throw new BadRequestException('Creative already has a decision');
+    }
 
     await this.batchesService.updateCounts(batch.id);
 
@@ -61,14 +66,19 @@ export class ApprovalsService {
       throw new BadRequestException('Creative already has a decision');
     }
 
-    await this.prisma.approval.update({
-      where: { creativeId: rejectDto.creativeId },
+    // Conditional update so two concurrent decisions can't both succeed
+    const result = await this.prisma.approval.updateMany({
+      where: { creativeId: rejectDto.creativeId, status: 'PENDING' },
       data: {
         status: 'REJECTED',
         feedbackText: rejectDto.feedback,
         feedbackProvidedAt: new Date(),
       },
     });
+
+    if (result.count === 0) {
+      throw new BadRequestException('Creative already has a decision');
+    }
 
     await this.batchesService.updateCounts(batch.id);
 

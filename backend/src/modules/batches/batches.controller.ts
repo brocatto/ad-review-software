@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { BatchesService } from './batches.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -14,17 +14,17 @@ export class BatchesController {
   }
 
   @Get()
-  findAll(@Request() req: any) {
-    return this.batchesService.findAll(req.user.id);
+  findAll() {
+    return this.batchesService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.batchesService.findOne(id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.batchesService.remove(id);
   }
 }

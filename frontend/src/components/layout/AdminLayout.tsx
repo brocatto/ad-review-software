@@ -1,5 +1,13 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, PlusCircle, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, PlusCircle, History, Settings, LogOut } from 'lucide-react';
+
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/batches', label: 'Lotes Enviados', icon: FolderOpen },
+  { to: '/batches/new', label: 'Criar Novo Lote', icon: PlusCircle },
+  { to: '/history', label: 'Histórico', icon: History },
+  { to: '/settings', label: 'Configurações', icon: Settings },
+];
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -21,51 +29,23 @@ export function AdminLayout() {
 
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
-            <li>
-              <NavLink
-                to="/dashboard"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-black text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`
-                }
-              >
-                <LayoutDashboard size={20} />
-                Dashboard
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/batches"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-black text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`
-                }
-              >
-                <FolderOpen size={20} />
-                Lotes Enviados
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/batches/new"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-black text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`
-                }
-              >
-                <PlusCircle size={20} />
-                Criar Novo Lote
-              </NavLink>
-            </li>
+            {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-black text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`
+                  }
+                >
+                  <Icon size={20} />
+                  {label}
+                </NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
 

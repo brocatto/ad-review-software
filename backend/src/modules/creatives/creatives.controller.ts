@@ -12,70 +12,65 @@ import {
   UploadedFile,
   Request,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { CreativesService } from './creatives.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UpdateNameDto } from './dto/update-name.dto';
+import { UpdateAdjustmentStatusDto } from './dto/update-adjustment-status.dto';
 
+// Storage and size limits for uploads are configured in creatives.module.ts
 @Controller('creatives')
 @UseGuards(JwtAuthGuard)
 export class CreativesController {
   constructor(private creativesService: CreativesService) {}
 
   @Post('batch/:batchId')
-  @UseInterceptors(
-    FilesInterceptor('files', 50, {
-      storage: memoryStorage(),
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
-      },
-    }),
-  )
+  @UseInterceptors(FilesInterceptor('files', 50))
   create(
-    @Param('batchId') batchId: string,
+    @Param('batchId', ParseUUIDPipe) batchId: string,
     @UploadedFiles() files: Express.Multer.File[],
     @Request() req: any,
   ) {
+    if (!files?.length) {
+      throw new BadRequestException('Envie ao menos um arquivo');
+    }
     return this.creativesService.create(batchId, files, req.user.id);
   }
 
   @Get('batch/:batchId')
-  findByBatch(@Param('batchId') batchId: string) {
+  findByBatch(@Param('batchId', ParseUUIDPipe) batchId: string) {
     return this.creativesService.findByBatch(batchId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.creativesService.findOne(id);
   }
 
   @Patch(':id/name')
-  updateName(@Param('id') id: string, @Body('name') name: string) {
-    return this.creativesService.updateName(id, name);
+  updateName(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateNameDto,
+    @Request() req: any,
+  ) {
+    return this.creativesService.updateName(id, dto.name, req.user.id);
   }
 
   @Patch(':id/adjustment-status')
   updateAdjustmentStatus(
-    @Param('id') id: string,
-    @Body('status') status: string,
-    @Body('notes') notes: string | undefined,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAdjustmentStatusDto,
     @Request() req: any,
   ) {
-    return this.creativesService.updateAdjustmentStatus(id, status, notes, req.user.id);
+    return this.creativesService.updateAdjustmentStatus(id, dto.status, dto.notes, req.user.id);
   }
 
   @Post(':id/revision')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   uploadRevision(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile() file: Express.Multer.File,
     @Request() req: any,
   ) {
@@ -86,7 +81,7 @@ export class CreativesController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.creativesService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    return this.creativesService.remove(id, req.user.id);
   }
 }

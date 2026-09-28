@@ -5,6 +5,8 @@ import { BatchesPage } from './pages/BatchesPage';
 import { CreateBatchPage } from './pages/CreateBatchPage';
 import { BatchDetailPage } from './pages/BatchDetailPage';
 import { ApprovalPage } from './pages/ApprovalPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { AdminLayout } from './components/layout/AdminLayout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -35,6 +37,8 @@ function App() {
           <Route path="batches" element={<BatchesPage />} />
           <Route path="batches/new" element={<CreateBatchPage />} />
           <Route path="batches/:id" element={<BatchDetailPage />} />
+          <Route path="history" element={<HistoryPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
