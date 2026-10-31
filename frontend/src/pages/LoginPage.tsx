@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login as apiLogin } from '../lib/api';
+import { LogIn } from 'lucide-react';
+import { login as apiLogin, getErrorMessage } from '../lib/api';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -19,31 +20,30 @@ export function LoginPage() {
       localStorage.setItem('token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Credenciais inválidas');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Credenciais inválidas'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
+      <div className="w-full max-w-sm animate-fadeIn">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-semibold text-black">Aprovação</h1>
-          <p className="text-gray-500 mt-2">Acesse o painel interno</p>
+          <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-glass border border-glass-border flex items-center justify-center">
+            <LogIn size={24} className="text-text-secondary" />
+          </div>
+          <h1 className="text-3xl font-semibold text-text-primary tracking-tight">AdReviewOS</h1>
+          <p className="text-text-tertiary mt-2">Acesse o painel interno</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="card-static p-8 space-y-5">
+          {error && <div className="alert alert-error animate-shake">{error}</div>}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+            <label htmlFor="email" className="label">
+              E-mail
             </label>
             <input
               id="email"
@@ -52,12 +52,14 @@ export function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="input"
               placeholder="seu@email.com"
+              autoComplete="email"
+              autoFocus
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="password" className="label">
               Senha
             </label>
             <input
@@ -67,18 +69,26 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="input"
               placeholder="••••••••"
+              autoComplete="current-password"
               required
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary w-full py-3 disabled:opacity-50"
-          >
-            {loading ? 'Entrando...' : 'Entrar'}
+          <button type="submit" disabled={loading} className="btn btn-primary w-full">
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Entrando...
+              </span>
+            ) : (
+              'Entrar'
+            )}
           </button>
         </form>
+
+        <p className="text-center text-xs text-text-muted mt-6">
+          Clientes acessam pelo link único enviado pelo time, sem login.
+        </p>
       </div>
     </div>
   );
