@@ -1,0 +1,11 @@
+#Ideias de Notificação
+- Revisão Concluida com 100% de exito ou criativos reprovados
+    - Slack
+    - Push notification
+
+1
+Coro do texto do botão enviar ajuste2
+
+#Plugar link do briefing
+
+## experiencia do cara para ver o link
