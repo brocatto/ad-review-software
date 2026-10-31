@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
-import { Readable } from 'stream';
 
 @Injectable()
 export class CloudinaryService {
@@ -13,26 +12,19 @@ export class CloudinaryService {
     });
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'ad-review',
-          resource_type: 'auto',
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result!.secure_url);
-        }
-      );
-
-      Readable.from(file.buffer).pipe(uploadStream);
+  /** Uploads a file from disk (multer temp file) and returns its secure URL. */
+  async uploadFile(filePath: string): Promise<string> {
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: 'ad-review',
+      resource_type: 'auto',
     });
+    return result.secure_url;
   }
 
   async deleteFile(url: string): Promise<void> {
-    // Extract public_id from Cloudinary URL
+    // https://res.cloudinary.com/<cloud>/<resource_type>/upload/v123/ad-review/<id>.<ext>
     const publicId = url.split('/').slice(-2).join('/').split('.')[0];
-    await cloudinary.uploader.destroy(publicId);
+    const resourceType = url.includes('/video/upload/') ? 'video' : 'image';
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   }
 }

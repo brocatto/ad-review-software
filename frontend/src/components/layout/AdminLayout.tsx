@@ -1,8 +1,19 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, PlusCircle, LogOut } from 'lucide-react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, FolderOpen, PlusCircle, History, Settings, LogOut } from 'lucide-react';
+import { getCurrentUser } from '../../lib/api';
+
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/batches', label: 'Lotes Enviados', icon: FolderOpen },
+  { to: '/batches/new', label: 'Criar Novo Lote', icon: PlusCircle },
+  { to: '/history', label: 'Histórico', icon: History },
+  { to: '/settings', label: 'Configurações', icon: Settings },
+];
 
 export function AdminLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const user = getCurrentUser();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -10,9 +21,15 @@ export function AdminLayout() {
     navigate('/login');
   };
 
-  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  // "Lotes Enviados" also covers batch detail pages, but not the creation form
+  const isActive = (to: string) =>
+    to === '/batches'
+      ? pathname === '/batches' || (pathname.startsWith('/batches/') && pathname !== '/batches/new')
+      : pathname === to || pathname.startsWith(`${to}/`);
+
+  const navLinkClass = (active: boolean) =>
     `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-      isActive
+      active
         ? 'bg-white/10 text-white border border-white/10'
         : 'text-white/60 hover:bg-white/5 hover:text-white/80'
     }`;
@@ -28,28 +45,24 @@ export function AdminLayout() {
 
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
-            <li>
-              <NavLink to="/dashboard" className={navLinkClass}>
-                <LayoutDashboard size={20} />
-                Dashboard
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/batches" className={navLinkClass}>
-                <FolderOpen size={20} />
-                Lotes Enviados
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/batches/new" className={navLinkClass}>
-                <PlusCircle size={20} />
-                Criar Novo Lote
-              </NavLink>
-            </li>
+            {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+              <li key={to}>
+                <NavLink to={to} className={navLinkClass(isActive(to))}>
+                  <Icon size={20} />
+                  {label}
+                </NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
 
         <div className="p-4 border-t border-glass-border">
+          {user && (
+            <div className="px-4 pb-3">
+              <p className="text-sm font-medium text-text-primary truncate">{user.fullName}</p>
+              <p className="text-xs text-text-muted truncate">{user.email}</p>
+            </div>
+          )}
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/60 hover:bg-white/5 hover:text-white/80 w-full transition-all duration-200"

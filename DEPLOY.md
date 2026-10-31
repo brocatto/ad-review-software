@@ -1,62 +1,32 @@
-# Guia de Deploy - Ad Review Software
+# Guia de Deploy - AdReviewOS
 
-## 🚀 Preparação Concluída
+## O que já está pronto
 
-O projeto está pronto para produção com as seguintes melhorias implementadas:
+### Backend
+- PostgreSQL via Prisma (migration única `20260809000000_init`)
+- Uploads em disco (`UPLOAD_DIR`) com Cloudinary opcional; limite por arquivo configurável (`MAX_FILE_SIZE`, padrão 100MB)
+- Helmet, CORS restrito a `FRONTEND_URL` em produção, rate limiting (300 req/min por IP; login 10/min)
+- Validação de env no boot (`DATABASE_URL`, `JWT_SECRET` forte em produção)
+- Health check em `GET /health`
+- Dockerfile multi-stage (Node 20); `prisma migrate deploy` automático no `docker-compose`
 
-### ✅ Backend
-- ✓ PostgreSQL (migrado de SQLite)
-- ✓ Cloudinary para uploads (com fallback local)
-- ✓ Security headers (Helmet)
-- ✓ CORS configurável
-- ✓ Rate limiting (100 req/min)
-- ✓ Health check endpoint
-- ✓ Docker support
-
-### ✅ Frontend
-- ✓ URLs configuráveis via .env
-- ✓ Docker + Nginx
-- ✓ SPA routing
-- ✓ Asset caching
+### Frontend
+- URL da API via `VITE_API_URL` (resolvida em build-time)
+- Docker + Nginx com SPA routing; `vercel.json` com rewrite para `/approve/<token>` funcionar na Vercel
 
 ---
 
-## 📋 Passo a Passo para Deploy
+## Opção 1: Railway (backend + PostgreSQL) + Vercel (frontend)
 
-### 1. Push do Código (AÇÃO NECESSÁRIA)
-
-O commit foi criado, mas o push falhou por falta de credenciais. Execute:
-
-```bash
-cd C:\Users\joao_\Desktop\coding\tinder-ad-software
-git push origin master
-```
-
-### 2. Configurar Cloudinary
-
-1. Acesse: https://cloudinary.com/users/register/free
-2. Crie uma conta gratuita
-3. No dashboard, copie:
-   - Cloud Name
-   - API Key
-   - API Secret
-
-### 3. Deploy Recomendado: Railway
-
-#### Backend + Database
-
-1. Acesse: https://railway.app
-2. New Project → Deploy from GitHub
-3. Selecione: `brocatto/ad-review-software`
-4. Railway vai detectar automaticamente o Dockerfile
-
-**Variáveis de Ambiente no Railway:**
+### Backend no Railway
+1. New Project → Deploy from GitHub → `brocatto/ad-review-software` (Root Directory: `backend`)
+2. Adicione um PostgreSQL (New → Database → PostgreSQL); `DATABASE_URL` é preenchida automaticamente
+3. Variáveis de ambiente:
 
 ```env
 NODE_ENV=production
 PORT=3000
-DATABASE_URL=[Railway vai gerar automaticamente ao adicionar PostgreSQL]
-JWT_SECRET=[usar: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"]
+JWT_SECRET=[node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"]
 JWT_EXPIRATION=7d
 FRONTEND_URL=https://seu-dominio.vercel.app
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
@@ -64,51 +34,26 @@ SLACK_ENABLED=true
 CLOUDINARY_CLOUD_NAME=seu-cloud-name
 CLOUDINARY_API_KEY=sua-api-key
 CLOUDINARY_API_SECRET=seu-api-secret
+MAX_FILE_SIZE=104857600
 SEED_ADMIN_EMAIL=seu-email@empresa.com
 SEED_ADMIN_PASSWORD=[senha forte, mínimo 8 caracteres]
 ```
 
-5. Adicionar PostgreSQL:
-   - Click em "New" → Database → PostgreSQL
-   - Railway vai configurar DATABASE_URL automaticamente
+4. Start command: `npx prisma migrate deploy && node dist/main.js`
+5. Seed inicial (uma vez, pelo shell do Railway): `npm run db:seed`
 
-6. Run migrations:
-   ```bash
-   npx prisma migrate deploy
-   ```
+> Sem Cloudinary os uploads ficam no disco do container e somem a cada deploy. Em produção, configure o Cloudinary (plano gratuito: 25GB).
 
-7. Seed inicial (cria o usuário admin com SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD):
-   ```bash
-   npm run db:seed
-   ```
-
-#### Frontend
-
-1. Acesse: https://vercel.com
-2. New Project → Import Git Repository
-3. Selecione: `brocatto/ad-review-software`
-4. Root Directory: `frontend`
-5. Framework: Vite
-6. Build Command: `npm run build`
-7. Output Directory: `dist`
-
-**Variáveis de Ambiente no Vercel:**
-
-```env
-VITE_API_URL=https://sua-api.railway.app
-```
-
-8. Deploy!
+### Frontend na Vercel
+1. New Project → Import `brocatto/ad-review-software`
+2. Root Directory: `frontend` · Framework: Vite · Build: `npm run build` · Output: `dist`
+3. Variável: `VITE_API_URL=https://sua-api.up.railway.app`
 
 ---
 
-## 🐳 Alternativa: Deploy com Docker Compose
+## Opção 2: Docker Compose (VPS)
 
-### Servidor Local/VPS
-
-1. Instale Docker e Docker Compose
-2. Clone o repositório
-3. Crie `.env` na raiz:
+1. Crie `.env` na raiz:
 
 ```env
 JWT_SECRET=gere-um-secret-forte-aqui
@@ -117,118 +62,44 @@ FRONTEND_URL=http://seu-dominio.com
 VITE_API_URL=http://seu-dominio.com:3000
 SLACK_WEBHOOK_URL=sua-webhook-url
 SLACK_ENABLED=true
-CLOUDINARY_CLOUD_NAME=seu-cloud-name
-CLOUDINARY_API_KEY=sua-api-key
-CLOUDINARY_API_SECRET=seu-api-secret
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+MAX_FILE_SIZE=104857600
 SEED_ADMIN_EMAIL=seu-email@empresa.com
 SEED_ADMIN_PASSWORD=senha-forte-de-admin
 ```
 
-4. Execute:
+2. `docker compose up -d --build`
+3. As migrations rodam no start do backend. Seed do admin: `docker compose exec backend npm run db:seed`
+4. Acesse: frontend em `http://localhost`, API em `http://localhost:3000`, health em `/health`
 
-```bash
-docker-compose up -d
-```
-
-5. Migrations rodam automaticamente no start do backend. Para o seed do admin:
-
-```bash
-docker-compose exec backend npm run db:seed
-```
-
-6. Acesse:
-   - Frontend: http://localhost
-   - Backend: http://localhost:3000
-   - Health: http://localhost:3000/health
+Sem Cloudinary, os uploads ficam no volume `uploads_data`.
 
 ---
 
-## 🔐 Primeiro Acesso
+## Primeiro acesso
+- `https://seu-frontend/login` com `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`
+- Troque a senha em **Configurações** e cadastre o time (somente Admin cria usuários)
 
-Após deploy e seed:
+## Endpoints úteis
+- `GET /health` · `GET /` · `POST /auth/login` · `GET /batches` · `GET /public/batch/:token`
 
-**Admin Login:**
-- URL: `https://seu-frontend.vercel.app/login`
-- Email: valor de `SEED_ADMIN_EMAIL`
-- Senha: valor de `SEED_ADMIN_PASSWORD`
+## Checklist pré-produção
+- [ ] `JWT_SECRET` gerado (>= 32 chars)
+- [ ] PostgreSQL provisionado e `DATABASE_URL` configurada
+- [ ] Cloudinary configurado
+- [ ] Migrations executadas (`prisma migrate deploy`)
+- [ ] Seed executado (admin criado) e senha trocada
+- [ ] `FRONTEND_URL` (backend) e `VITE_API_URL` (frontend) apontando um para o outro
+- [ ] Teste: login, criar lote, upload, link público, aprovação/reprovação, revisão, notificação Slack
 
-O seed exige `SEED_ADMIN_PASSWORD` (mínimo 8 caracteres) — não existe senha padrão.
+## Troubleshooting
+- **Database Connection Failed**: confira `DATABASE_URL` e se o Postgres está no ar.
+- **P3005 no migrate deploy (banco não vazio)**: banco criado por versão anterior (`prisma db push`). Marque a migration inicial como aplicada: `npx prisma migrate resolve --applied 20260809000000_init`.
+- **CORS**: `FRONTEND_URL` deve ser exatamente a origem do frontend (com https, sem barra final).
+- **Upload falha com 413/400**: arquivo acima de `MAX_FILE_SIZE` ou tipo não permitido (só imagem/vídeo).
+- **Slack não chega**: teste o webhook com `curl -X POST -H 'Content-type: application/json' --data '{"text":"teste"}' $SLACK_WEBHOOK_URL` e confira `SLACK_ENABLED=true`.
 
----
-
-## 📊 Endpoints Úteis
-
-- `GET /health` - Status da aplicação e DB
-- `GET /` - Info da API
-- `POST /auth/login` - Login
-- `GET /batches` - Listar lotes
-
----
-
-## ⚠️ Checklist Pré-Produção
-
-- [ ] Push do código para GitHub
-- [ ] Conta Cloudinary criada
-- [ ] JWT_SECRET gerado (128 chars)
-- [ ] Deploy backend no Railway
-- [ ] PostgreSQL adicionado no Railway
-- [ ] Migrations executadas
-- [ ] Seed executado (admin criado)
-- [ ] Deploy frontend no Vercel
-- [ ] Variáveis de ambiente configuradas
-- [ ] Teste de login
-- [ ] Teste de upload de creative
-- [ ] Teste de aprovação (link público)
-- [ ] Notificação Slack funcionando
-
----
-
-## 🆘 Troubleshooting
-
-### Database Connection Failed
-- Verifique DATABASE_URL no Railway
-- Confirm que PostgreSQL addon está ativo
-
-### Migrate deploy falha com P3005 (banco não vazio)
-As migrations foram recriadas do zero para PostgreSQL. Se o banco já tinha
-tabelas criadas por uma versão anterior (ex.: via `prisma db push`), marque a
-migration inicial como aplicada (baseline) em vez de recriar o banco:
-```bash
-npx prisma migrate resolve --applied 20260809000000_init
-```
-
-### CORS Error
-- Adicione URL do frontend em FRONTEND_URL
-- Verifique se frontend está usando VITE_API_URL correta
-
-### Uploads Não Funcionam
-- Confirme credenciais Cloudinary
-- Teste health check endpoint
-
-### Notificações Slack Não Chegam
-- Teste webhook: `curl -X POST -H 'Content-type: application/json' --data '{"text":"teste"}' SLACK_WEBHOOK_URL`
-- Verifique SLACK_ENABLED=true
-
----
-
-## 📞 Próximos Passos
-
-1. Faça o push: `git push origin master`
-2. Configure Cloudinary
-3. Deploy no Railway (backend)
-4. Deploy no Vercel (frontend)
-5. Teste com seu time!
-
----
-
-## 💡 Custos Estimados (MVP/Teste)
-
-- Railway (Backend + PostgreSQL): **GRÁTIS** ($5 crédito/mês)
-- Vercel (Frontend): **GRÁTIS** (plan hobby)
-- Cloudinary: **GRÁTIS** (25GB storage, 25GB bandwidth/mês)
-
-**Total: $0/mês** para MVP com time pequeno 🎉
-
----
-
-Gerado automaticamente por Claude Code
+## Custos estimados (MVP)
+- Railway (backend + PostgreSQL): grátis ($5 crédito/mês) · Vercel (hobby): grátis · Cloudinary: grátis (25GB)

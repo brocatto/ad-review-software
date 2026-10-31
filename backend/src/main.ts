@@ -2,8 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 import helmet from 'helmet';
+import { getUploadDir } from './config/storage.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -39,9 +39,9 @@ async function bootstrap() {
     }),
   );
 
-  // Serve static files (only if not using Cloudinary)
+  // Serve locally stored uploads (only when Cloudinary is not configured)
   if (!process.env.CLOUDINARY_CLOUD_NAME) {
-    app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    app.useStaticAssets(getUploadDir(), {
       prefix: '/uploads/',
     });
   }

@@ -4,7 +4,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './config/prisma.module';
-import { CloudinaryModule } from './config/cloudinary.module';
+import { StorageModule } from './config/storage.module';
 import { HealthController } from './health.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -23,10 +23,10 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000, // 1 minute
-      limit: 100, // 100 requests per minute
+      limit: 300, // per client IP (see trust proxy in main.ts); login has its own stricter limit
     }]),
     PrismaModule,
-    CloudinaryModule,
+    StorageModule,
     AuthModule,
     UsersModule,
     ClientsModule,

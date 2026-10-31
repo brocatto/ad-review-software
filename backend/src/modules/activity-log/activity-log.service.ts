@@ -10,6 +10,9 @@ interface LogEntry {
   details?: any;
 }
 
+const USER_SELECT = { select: { id: true, fullName: true } };
+const CREATIVE_SELECT = { select: { id: true, name: true } };
+
 @Injectable()
 export class ActivityLogService {
   constructor(
@@ -30,29 +33,38 @@ export class ActivityLogService {
     });
   }
 
+  /**
+   * Global history limited to batches the user owns, newest first.
+   * `before` is the createdAt of the last item of the previous page (keyset pagination).
+   */
+  async findRecent(userId: string, limit: number, before?: Date) {
+    return this.prisma.activityLog.findMany({
+      where: {
+        batch: { createdByUserId: userId },
+        ...(before ? { createdAt: { lt: before } } : {}),
+      },
+      include: {
+        user: USER_SELECT,
+        creative: CREATIVE_SELECT,
+        batch: {
+          select: { id: true, name: true, client: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
   async findByBatch(batchId: string, userId: string) {
     // Verify batch ownership
     const isOwner = await this.batchesService.verifyOwnership(batchId, userId);
     if (!isOwner) {
-      throw new ForbiddenException('Access denied');
+      throw new ForbiddenException('Acesso negado');
     }
 
     return this.prisma.activityLog.findMany({
       where: { batchId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-          },
-        },
-        creative: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+      include: { user: USER_SELECT, creative: CREATIVE_SELECT },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -65,25 +77,18 @@ export class ActivityLogService {
     });
 
     if (!creative) {
-      throw new NotFoundException('Creative not found');
+      throw new NotFoundException('Criativo não encontrado');
     }
 
     // Verify batch ownership
     const isOwner = await this.batchesService.verifyOwnership(creative.batchId, userId);
     if (!isOwner) {
-      throw new ForbiddenException('Access denied');
+      throw new ForbiddenException('Acesso negado');
     }
 
     return this.prisma.activityLog.findMany({
       where: { creativeId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-          },
-        },
-      },
+      include: { user: USER_SELECT },
       orderBy: { createdAt: 'desc' },
     });
   }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
+import { StorageService } from '../../config/storage.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { ActivityLogService } from '../activity-log/activity-log.service';
@@ -15,13 +16,14 @@ export class BatchesService {
     private notificationsService: NotificationsService,
     @Inject(forwardRef(() => ClientsService))
     private clientsService: ClientsService,
+    private storageService: StorageService,
   ) {}
 
   async create(createBatchDto: CreateBatchDto, userId: string) {
     // Verify client belongs to user
     const isOwner = await this.clientsService.verifyOwnership(createBatchDto.clientId, userId);
     if (!isOwner) {
-      throw new ForbiddenException('Access denied to this client');
+      throw new ForbiddenException('Acesso negado a este cliente');
     }
 
     const batch = await this.prisma.batch.create({
@@ -100,11 +102,11 @@ export class BatchesService {
     });
 
     if (!batch) {
-      throw new NotFoundException('Batch not found');
+      throw new NotFoundException('Lote não encontrado');
     }
 
     if (batch.createdByUserId !== userId) {
-      throw new ForbiddenException('Access denied');
+      throw new ForbiddenException('Acesso negado');
     }
 
     return batch;
@@ -118,7 +120,7 @@ export class BatchesService {
     });
 
     if (!batch) {
-      throw new NotFoundException('Batch not found');
+      throw new NotFoundException('Lote não encontrado');
     }
 
     return batch.createdByUserId === userId;
@@ -139,7 +141,7 @@ export class BatchesService {
     });
 
     if (!batch) {
-      throw new NotFoundException('Batch not found');
+      throw new NotFoundException('Lote não encontrado');
     }
 
     // Filter to show only pending creatives (including re-submitted ones)
@@ -166,18 +168,23 @@ export class BatchesService {
     const rejected = creatives.filter((c) => c.approval?.status === 'REJECTED').length;
     const pending = total - approved - rejected;
 
-    // Get current batch status before update
-    const currentBatch = await this.prisma.batch.findUnique({
-      where: { id: batchId },
-      select: { status: true },
-    });
-
     let status: 'PENDING' | 'PARTIAL' | 'COMPLETED' = 'PENDING';
     if (pending === 0 && total > 0) {
       status = 'COMPLETED';
     } else if (approved > 0 || rejected > 0) {
       status = 'PARTIAL';
     }
+
+    // Conditional update: only one concurrent caller can move the batch into
+    // COMPLETED, so the "completed" notification is sent exactly once.
+    const becameCompleted =
+      status === 'COMPLETED' &&
+      (
+        await this.prisma.batch.updateMany({
+          where: { id: batchId, status: { not: 'COMPLETED' } },
+          data: { status: 'COMPLETED' },
+        })
+      ).count === 1;
 
     const updatedBatch = await this.prisma.batch.update({
       where: { id: batchId },
@@ -194,8 +201,7 @@ export class BatchesService {
       },
     });
 
-    // Send notification when batch status changes to COMPLETED
-    if (status === 'COMPLETED' && currentBatch?.status !== 'COMPLETED') {
+    if (becameCompleted) {
       await this.notificationsService.notifyBatchCompleted({
         batchId,
         batchName: updatedBatch.name,
@@ -214,8 +220,18 @@ export class BatchesService {
   async remove(id: string, userId: string) {
     await this.findOne(id, userId);
 
-    return this.prisma.batch.delete({
+    // Collect every stored file before the cascade wipes the version rows
+    const versions = await this.prisma.creativeVersion.findMany({
+      where: { creative: { batchId: id } },
+      select: { fileUrl: true },
+    });
+
+    const deleted = await this.prisma.batch.delete({
       where: { id },
     });
+
+    await Promise.all(versions.map((v) => this.storageService.remove(v.fileUrl)));
+
+    return deleted;
   }
 }

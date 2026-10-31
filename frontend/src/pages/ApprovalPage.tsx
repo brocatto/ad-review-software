@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
@@ -16,9 +16,21 @@ export function ApprovalPage() {
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  useEffect(() => {
-    if (accessToken) loadBatch();
+  const loadBatch = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const data = await getPublicBatch(accessToken);
+      setBatch(data);
+    } catch (error) {
+      console.error('Error loading batch:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [accessToken]);
+
+  useEffect(() => {
+    loadBatch();
+  }, [loadBatch]);
 
   useEffect(() => {
     if (!actionError) return;
@@ -26,26 +38,16 @@ export function ApprovalPage() {
     return () => clearTimeout(timer);
   }, [actionError]);
 
-  const loadBatch = async () => {
-    try {
-      const data = await getPublicBatch(accessToken!);
-      setBatch(data);
-
-    } catch (error) {
-      console.error('Error loading batch:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const pendingCreatives = batch?.creatives?.filter(
     (c) => c.approval?.status === 'PENDING'
   ) || [];
 
   const currentCreative = pendingCreatives[0];
   const totalPending = pendingCreatives.length;
-  const totalCreatives = batch?.creatives?.length || 0;
-  const completed = totalCreatives - totalPending;
+  // The public endpoint returns only pending creatives; allCreativesCount carries the real total
+  const totalCreatives = batch?.allCreativesCount ?? batch?.creatives?.length ?? 0;
+  const completed = Math.max(totalCreatives - totalPending, 0);
+  const progress = totalCreatives > 0 ? (completed / totalCreatives) * 100 : 0;
 
   const handleApprove = async () => {
     if (!currentCreative || !accessToken || submitting) return;
@@ -145,7 +147,7 @@ export function ApprovalPage() {
         <div className="mt-3 h-1 bg-glass-border rounded-full overflow-hidden">
           <div
             className="h-full bg-white transition-all duration-300"
-            style={{ width: `${(completed / totalCreatives) * 100}%` }}
+            style={{ width: `${progress}%` }}
           />
         </div>
       </header>
@@ -169,6 +171,7 @@ export function ApprovalPage() {
         <button
           onClick={handleReject}
           disabled={submitting}
+          aria-label="Reprovar"
           className="w-16 h-16 bg-glass rounded-full border border-glass-border flex items-center justify-center text-status-error hover:bg-status-error/20 hover:border-status-error/40 transition-all duration-200 disabled:opacity-40"
         >
           <X size={32} />
@@ -176,6 +179,7 @@ export function ApprovalPage() {
         <button
           onClick={handleApprove}
           disabled={submitting}
+          aria-label="Aprovar"
           className="w-16 h-16 bg-glass rounded-full border border-glass-border flex items-center justify-center text-status-success hover:bg-status-success/20 hover:border-status-success/40 transition-all duration-200 disabled:opacity-40"
         >
           <Check size={32} />

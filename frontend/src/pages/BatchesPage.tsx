@@ -1,53 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, ExternalLink, Trash2 } from 'lucide-react';
-import { getBatches, deleteBatch } from '../lib/api';
+import { Plus, ExternalLink, Trash2, Check } from 'lucide-react';
+import { getBatches, deleteBatch, getErrorMessage } from '../lib/api';
+import { formatDateTime } from '../lib/activity';
 import type { Batch } from '../types';
+
+const percent = (part: number, total: number) =>
+  total > 0 ? `${Math.round((part / total) * 100)}%` : '—';
 
 export function BatchesPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadBatches();
-  }, []);
-
-  const loadBatches = async () => {
+  const loadBatches = useCallback(async () => {
     try {
       const data = await getBatches();
       setBatches(data);
-    } catch (error) {
-      console.error('Error loading batches:', error);
+    } catch (err) {
+      console.error('Error loading batches:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadBatches();
+  }, [loadBatches]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este lote?')) return;
+    if (!confirm('Tem certeza que deseja excluir este lote? Os criativos e o histórico serão apagados.')) return;
 
     try {
       await deleteBatch(id);
       setBatches(batches.filter((b) => b.id !== id));
-    } catch (error) {
-      console.error('Error deleting batch:', error);
+    } catch (err) {
+      console.error('Error deleting batch:', err);
+      setError(getErrorMessage(err, 'Erro ao excluir lote'));
     }
   };
 
-  const copyLink = (accessToken: string) => {
-    const link = `${window.location.origin}/approve/${accessToken}`;
-    navigator.clipboard.writeText(link);
-    alert('Link copiado!');
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const copyLink = async (batch: Batch) => {
+    const link = `${window.location.origin}/approve/${batch.accessToken}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedId(batch.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setError(`Não foi possível copiar automaticamente. Link: ${link}`);
+    }
   };
 
   if (loading) {
@@ -68,6 +70,8 @@ export function BatchesPage() {
         </Link>
       </div>
 
+      {error && <div className="alert alert-error mb-6">{error}</div>}
+
       {batches.length === 0 ? (
         <div className="card-static p-8 text-center">
           <p className="text-text-tertiary mb-4">Nenhum lote criado ainda.</p>
@@ -76,7 +80,7 @@ export function BatchesPage() {
           </Link>
         </div>
       ) : (
-        <div className="card-static overflow-hidden">
+        <div className="card-static overflow-x-auto">
           <table className="w-full">
             <thead className="bg-white/5">
               <tr>
@@ -90,10 +94,13 @@ export function BatchesPage() {
                   Status
                 </th>
                 <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                  Progresso
+                  Aprovado / Reprovado
                 </th>
                 <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Criado em
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                  Última interação
                 </th>
                 <th className="text-right px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                   Ações
@@ -131,24 +138,36 @@ export function BatchesPage() {
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="text-status-success">{batch.approvedCount}</span>
+                      <span className="text-status-success" title={`${batch.approvedCount} aprovados`}>
+                        {percent(batch.approvedCount, batch.totalCreatives)}
+                      </span>
                       <span className="text-text-muted">/</span>
-                      <span className="text-status-error">{batch.rejectedCount}</span>
-                      <span className="text-text-muted">/</span>
-                      <span className="text-text-secondary">{batch.totalCreatives}</span>
+                      <span className="text-status-error" title={`${batch.rejectedCount} reprovados`}>
+                        {percent(batch.rejectedCount, batch.totalCreatives)}
+                      </span>
+                      <span className="text-text-muted text-xs">
+                        ({batch.approvedCount + batch.rejectedCount}/{batch.totalCreatives})
+                      </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-text-tertiary">
-                    {formatDate(batch.createdAt)}
+                  <td className="px-6 py-4 text-sm text-text-tertiary whitespace-nowrap">
+                    {formatDateTime(batch.createdAt)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-text-tertiary whitespace-nowrap">
+                    {batch.lastInteractionAt ? formatDateTime(batch.lastInteractionAt) : '—'}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => copyLink(batch.accessToken)}
+                        onClick={() => copyLink(batch)}
                         className="btn-icon"
-                        title="Copiar link"
+                        title={copiedId === batch.id ? 'Link copiado!' : 'Copiar link do cliente'}
                       >
-                        <ExternalLink size={16} />
+                        {copiedId === batch.id ? (
+                          <Check size={16} className="text-status-success" />
+                        ) : (
+                          <ExternalLink size={16} />
+                        )}
                       </button>
                       <button
                         onClick={() => handleDelete(batch.id)}

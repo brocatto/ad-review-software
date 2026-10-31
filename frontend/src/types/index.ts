@@ -3,6 +3,7 @@ export interface User {
   email: string;
   fullName: string;
   role: 'ADMIN' | 'MANAGER';
+  createdAt?: string;
 }
 
 export interface Client {
@@ -36,6 +37,8 @@ export interface Batch {
     email: string;
   };
   creatives?: Creative[];
+  /** Public endpoint only: total creatives in the batch (creatives[] holds just the pending ones) */
+  allCreativesCount?: number;
   _count?: {
     creatives: number;
   };
@@ -90,6 +93,11 @@ export interface ActivityLog {
   creative?: {
     id: string;
     name: string;
+  };
+  batch?: {
+    id: string;
+    name: string;
+    client: { id: string; name: string };
   };
 }
 

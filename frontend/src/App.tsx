@@ -4,6 +4,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { BatchesPage } from './pages/BatchesPage';
 import { CreateBatchPage } from './pages/CreateBatchPage';
 import { BatchDetailPage } from './pages/BatchDetailPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { ApprovalPage } from './pages/ApprovalPage';
 import { AdminLayout } from './components/layout/AdminLayout';
 
@@ -35,6 +37,8 @@ function App() {
           <Route path="batches" element={<BatchesPage />} />
           <Route path="batches/new" element={<CreateBatchPage />} />
           <Route path="batches/:id" element={<BatchDetailPage />} />
+          <Route path="history" element={<HistoryPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

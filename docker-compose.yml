@@ -39,6 +39,7 @@ services:
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@adverse.com}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-104857600}
     volumes:
       # Persiste uploads locais quando Cloudinary não está configurado
       - uploads_data:/app/uploads

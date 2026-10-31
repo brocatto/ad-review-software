@@ -12,39 +12,24 @@ import {
   UploadedFile,
   Request,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { CreativesService } from './creatives.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UpdateNameDto } from './dto/update-name.dto';
+import { UpdateAdjustmentStatusDto } from './dto/update-adjustment-status.dto';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-const mediaFileFilter = (
-  _req: unknown,
-  file: Express.Multer.File,
-  cb: (error: Error | null, acceptFile: boolean) => void,
-) => {
-  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-    cb(null, true);
-  } else {
-    cb(new BadRequestException('Apenas imagens e vídeos são permitidos'), false);
-  }
-};
-
+// Multer storage, size limit and media filter are configured in creatives.module.ts.
+// Upload routes keep plain string ids on purpose: validation failures must reach the
+// service so it can discard the temp files multer already wrote.
 @Controller('creatives')
 @UseGuards(JwtAuthGuard)
 export class CreativesController {
   constructor(private creativesService: CreativesService) {}
 
   @Post('batch/:batchId')
-  @UseInterceptors(
-    FilesInterceptor('files', 50, {
-      storage: memoryStorage(),
-      limits: { fileSize: MAX_FILE_SIZE },
-      fileFilter: mediaFileFilter,
-    }),
-  )
+  @UseInterceptors(FilesInterceptor('files', 50))
   create(
     @Param('batchId') batchId: string,
     @UploadedFiles() files: Express.Multer.File[],
@@ -57,41 +42,35 @@ export class CreativesController {
   }
 
   @Get('batch/:batchId')
-  findByBatch(@Param('batchId') batchId: string, @Request() req: any) {
+  findByBatch(@Param('batchId', ParseUUIDPipe) batchId: string, @Request() req: any) {
     return this.creativesService.findByBatch(batchId, req.user.id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req: any) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     return this.creativesService.findOne(id, req.user.id);
   }
 
   @Patch(':id/name')
-  updateName(@Param('id') id: string, @Body('name') name: string, @Request() req: any) {
-    if (!name || !name.trim()) {
-      throw new BadRequestException('Nome é obrigatório');
-    }
-    return this.creativesService.updateName(id, name.trim(), req.user.id);
+  updateName(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateNameDto,
+    @Request() req: any,
+  ) {
+    return this.creativesService.updateName(id, dto.name, req.user.id);
   }
 
   @Patch(':id/adjustment-status')
   updateAdjustmentStatus(
-    @Param('id') id: string,
-    @Body('status') status: string,
-    @Body('notes') notes: string | undefined,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAdjustmentStatusDto,
     @Request() req: any,
   ) {
-    return this.creativesService.updateAdjustmentStatus(id, status, notes, req.user.id);
+    return this.creativesService.updateAdjustmentStatus(id, dto.status, dto.notes, req.user.id);
   }
 
   @Post(':id/revision')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
-      limits: { fileSize: MAX_FILE_SIZE },
-      fileFilter: mediaFileFilter,
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   uploadRevision(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
@@ -104,7 +83,7 @@ export class CreativesController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: any) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     return this.creativesService.remove(id, req.user.id);
   }
 }

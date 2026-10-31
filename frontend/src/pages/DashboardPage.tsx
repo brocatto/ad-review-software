@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderOpen, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { getBatches } from '../lib/api';
@@ -8,11 +8,7 @@ export function DashboardPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadBatches();
-  }, []);
-
-  const loadBatches = async () => {
+  const loadBatches = useCallback(async () => {
     try {
       const data = await getBatches();
       setBatches(data);
@@ -21,7 +17,11 @@ export function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadBatches();
+  }, [loadBatches]);
 
   const totalBatches = batches.length;
   const totalApproved = batches.reduce((sum, b) => sum + b.approvedCount, 0);
