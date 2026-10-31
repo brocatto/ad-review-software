@@ -5,7 +5,9 @@ WORKDIR /app
 
 # API URL is baked into the bundle at build time
 ARG VITE_API_URL=http://localhost:3000
+ARG VITE_GOOGLE_CLIENT_ID=
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 
 # Copy package files
 COPY package*.json ./

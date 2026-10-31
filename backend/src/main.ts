@@ -6,7 +6,8 @@ import helmet from 'helmet';
 import { getUploadDir } from './config/storage.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody keeps the unparsed payload available for Stripe webhook signature checks
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
   // Behind a reverse proxy (Railway/Render/etc.) the real client IP arrives via
   // X-Forwarded-For — without this, rate limiting buckets everyone under the proxy IP
@@ -27,7 +28,7 @@ async function bootstrap() {
     origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'stripe-signature'],
   });
 
   // Validation pipe

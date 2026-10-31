@@ -49,6 +49,7 @@ npm run dev                     # http://localhost:5173
 
 - **Painel Admin:** http://localhost:5173/login — e-mail `SEED_ADMIN_EMAIL` e senha `SEED_ADMIN_PASSWORD` usados no seed (não existe senha padrão).
 - **Cliente:** link `http://localhost:5173/approve/<token>` gerado em cada lote (sem login).
+- **Cadastro self-service:** http://localhost:5173/signup, a partir da landing page em `/`. Novas contas ganham 30 dias de teste e precisam confirmar o e-mail.
 
 ## Fluxo de Uso
 
@@ -58,6 +59,14 @@ npm run dev                     # http://localhost:5173
 4. Envie o link ao cliente por WhatsApp, e-mail ou copiando manualmente
 5. O cliente acessa pelo celular e faz swipe para aprovar/reprovar (com feedback na reprovação)
 6. Acompanhe feedbacks, status interno dos ajustes e a linha do tempo no painel; reenvie revisões dos reprovados
+
+## SaaS: cadastro, teste grátis e assinatura
+
+- A landing page (`/`) leva para `/signup`. O cadastro, por e-mail/senha ou Google, cria a conta com `TRIAL_PERIOD_DAYS` dias de teste e exige confirmação do e-mail antes do primeiro login. Há também "esqueci minha senha" com link por e-mail.
+- Terminado o teste sem assinatura, a API responde `403 SUBSCRIPTION_REQUIRED` nas rotas do painel e o frontend leva o usuário para **Faturamento**, onde o Stripe Checkout cria a assinatura mensal. O webhook `POST /webhooks/stripe` mantém o status sincronizado e o Customer Portal cuida de cartão e cancelamento.
+- O admin da plataforma (`role ADMIN`) e as contas criadas por ele em Configurações nunca são cobrados.
+- Sem `RESEND_API_KEY`, os e-mails (confirmação, boas-vindas, redefinição de senha, cobrança) são apenas logados no console do backend, com os links. Sem chaves do Stripe, a página de Faturamento informa que a cobrança não está configurada. Sem `GOOGLE_CLIENT_ID`, o botão do Google não aparece.
+- Para testar webhooks localmente: `stripe listen --forward-to localhost:3000/webhooks/stripe` e copie o `whsec_` para `STRIPE_WEBHOOK_SECRET`.
 
 ## Estrutura
 
@@ -69,7 +78,7 @@ npm run dev                     # http://localhost:5173
 │   └── prisma/        # Schema, migrations e seed
 ├── frontend/          # React + Vite
 │   └── src/
-│       ├── pages/     # Login, Dashboard, Lotes, Criar Lote, Detalhe, Histórico, Configurações, Aprovação (cliente)
+│       ├── pages/     # Landing, Login, Cadastro, Confirmação/Redefinição, Dashboard, Lotes, Criar Lote, Detalhe, Histórico, Faturamento, Configurações, Aprovação (cliente)
 │       ├── components/
 │       └── lib/       # API client, descrições do log de atividades
 ├── docker-compose.yml # postgres + backend + frontend (produção em container)
@@ -105,4 +114,8 @@ npm run lint         # ESLint (warnings falham)
 | `UPLOAD_DIR` | Pasta dos uploads locais (padrão `./uploads`) |
 | `CLOUDINARY_*` | Se definidos, uploads vão para o Cloudinary |
 | `SLACK_WEBHOOK_URL` / `SLACK_ENABLED` | Notificações de lote enviado/concluído |
-| `FRONTEND_URL` | Origem permitida no CORS e base dos links nas notificações |
+| `FRONTEND_URL` | Origem permitida no CORS, base dos links em e-mails/notificações e redirects do Stripe |
+| `GOOGLE_CLIENT_ID` | Login com Google (o mesmo valor vai em `VITE_GOOGLE_CLIENT_ID` no frontend) |
+| `RESEND_API_KEY` / `EMAIL_FROM` | E-mails transacionais via Resend (remetente precisa de domínio verificado) |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID_MONTHLY` | Assinatura mensal via Stripe |
+| `TRIAL_PERIOD_DAYS` | Dias de teste concedidos no cadastro (padrão 30) |

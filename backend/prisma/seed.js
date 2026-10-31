@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.SEED_ADMIN_EMAIL || 'admin@adverse.com';
+  const email = (process.env.SEED_ADMIN_EMAIL || 'admin@adverse.com').trim().toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD;
 
   if (!password || password.length < 8) {
@@ -17,14 +17,18 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
+  // Platform admin: verified, never billed (SubscriptionGuard skips ADMIN)
   const admin = await prisma.user.upsert({
     where: { email },
-    update: { passwordHash, role: 'ADMIN' },
+    update: { passwordHash, role: 'ADMIN', emailVerified: true, subscriptionStatus: 'ACTIVE' },
     create: {
       email,
       passwordHash,
       fullName: 'Admin User',
       role: 'ADMIN',
+      authProvider: 'LOCAL',
+      emailVerified: true,
+      subscriptionStatus: 'ACTIVE',
     },
   });
 

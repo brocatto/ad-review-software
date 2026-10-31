@@ -1,12 +1,21 @@
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, PlusCircle, History, Settings, LogOut } from 'lucide-react';
-import { getCurrentUser } from '../../lib/api';
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  FolderOpen,
+  PlusCircle,
+  History,
+  Settings,
+  CreditCard,
+  LogOut,
+} from 'lucide-react';
+import { getCurrentUser, clearSession } from '../../lib/api';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/batches', label: 'Lotes Enviados', icon: FolderOpen },
   { to: '/batches/new', label: 'Criar Novo Lote', icon: PlusCircle },
   { to: '/history', label: 'Histórico', icon: History },
+  { to: '/billing', label: 'Faturamento', icon: CreditCard },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
@@ -16,8 +25,7 @@ export function AdminLayout() {
   const user = getCurrentUser();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSession();
     navigate('/login');
   };
 
@@ -33,6 +41,13 @@ export function AdminLayout() {
         ? 'bg-white/10 text-white border border-white/10'
         : 'text-white/60 hover:bg-white/5 hover:text-white/80'
     }`;
+
+  // Trial badge for self-service accounts (the internal team / admins are never billed)
+  const trialDaysLeft = user?.trialEndsAt
+    ? Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / 86400000)
+    : null;
+  const showTrial =
+    user?.role !== 'ADMIN' && user?.subscriptionStatus === 'TRIAL' && trialDaysLeft !== null;
 
   return (
     <div className="min-h-screen bg-bg-primary flex">
@@ -61,6 +76,11 @@ export function AdminLayout() {
             <div className="px-4 pb-3">
               <p className="text-sm font-medium text-text-primary truncate">{user.fullName}</p>
               <p className="text-xs text-text-muted truncate">{user.email}</p>
+              {showTrial && (
+                <Link to="/billing" className="badge badge-warning mt-2">
+                  {trialDaysLeft > 0 ? `Teste grátis: ${trialDaysLeft} dias` : 'Teste encerrado'}
+                </Link>
+              )}
             </div>
           )}
           <button

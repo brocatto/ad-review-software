@@ -1,7 +1,18 @@
 import axios from 'axios';
-import type { AuthResponse, Batch, Client, Creative, ActivityLog, User } from '../types';
+import type {
+  AuthResponse,
+  Batch,
+  BillingStatus,
+  Client,
+  Creative,
+  ActivityLog,
+  User,
+} from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+/** Backend error message that means "trial over / no subscription" (see SubscriptionGuard). */
+export const SUBSCRIPTION_REQUIRED = 'SUBSCRIPTION_REQUIRED';
 
 // Cloudinary returns absolute URLs; local storage returns paths like /uploads/x.jpg
 export const getFileUrl = (path: string) =>
@@ -13,6 +24,16 @@ export const getCurrentUser = (): User | null => {
   } catch {
     return null;
   }
+};
+
+export const storeSession = (auth: AuthResponse) => {
+  localStorage.setItem('token', auth.access_token);
+  localStorage.setItem('user', JSON.stringify(auth.user));
+};
+
+export const clearSession = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
 };
 
 /** Human-readable message from an API error (Nest returns string or string[]). */
@@ -38,12 +59,20 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const status = error.response?.status;
     // A 401 from the login form means wrong credentials, not an expired session
     const isLoginRequest = error.config?.url === '/auth/login';
-    if (error.response?.status === 401 && !isLoginRequest) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (status === 401 && !isLoginRequest) {
+      clearSession();
       window.location.href = '/login';
+    }
+    // Trial ended / no active subscription: send the user to the billing page once
+    if (
+      status === 403 &&
+      error.response?.data?.message === SUBSCRIPTION_REQUIRED &&
+      !window.location.pathname.startsWith('/billing')
+    ) {
+      window.location.href = '/billing?expired=true';
     }
     return Promise.reject(error);
   }
@@ -55,6 +84,43 @@ export const login = async (email: string, password: string): Promise<AuthRespon
   return data;
 };
 
+export const signup = async (email: string, password: string, fullName: string) => {
+  const { data } = await api.post<{ message: string; email: string }>('/auth/signup', {
+    email,
+    password,
+    fullName,
+  });
+  return data;
+};
+
+export const verifyEmail = async (token: string): Promise<AuthResponse> => {
+  const { data } = await api.get('/auth/verify-email', { params: { token } });
+  return data;
+};
+
+export const resendVerification = async (email: string) => {
+  const { data } = await api.post<{ message: string }>('/auth/resend-verification', { email });
+  return data;
+};
+
+export const googleAuth = async (idToken: string): Promise<AuthResponse> => {
+  const { data } = await api.post('/auth/google', { idToken });
+  return data;
+};
+
+export const forgotPassword = async (email: string) => {
+  const { data } = await api.post<{ message: string }>('/auth/forgot-password', { email });
+  return data;
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  const { data } = await api.post<{ message: string }>('/auth/reset-password', {
+    token,
+    newPassword,
+  });
+  return data;
+};
+
 export const verifyToken = async () => {
   const { data } = await api.get('/auth/verify');
   return data;
@@ -62,6 +128,22 @@ export const verifyToken = async () => {
 
 export const changePassword = async (currentPassword: string, newPassword: string) => {
   await api.patch('/auth/password', { currentPassword, newPassword });
+};
+
+// Billing
+export const getBillingStatus = async (): Promise<BillingStatus> => {
+  const { data } = await api.get('/billing/status');
+  return data;
+};
+
+export const createCheckout = async (): Promise<{ url: string | null }> => {
+  const { data } = await api.post('/billing/checkout');
+  return data;
+};
+
+export const createPortalSession = async (): Promise<{ url: string }> => {
+  const { data } = await api.post('/billing/portal');
+  return data;
 };
 
 // Users (admin only)

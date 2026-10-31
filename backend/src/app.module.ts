@@ -6,6 +6,7 @@ import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './config/prisma.module';
 import { StorageModule } from './config/storage.module';
 import { HealthController } from './health.controller';
+import { EmailModule } from './modules/email/email.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ClientsModule } from './modules/clients/clients.module';
@@ -14,6 +15,7 @@ import { CreativesModule } from './modules/creatives/creatives.module';
 import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -23,10 +25,11 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000, // 1 minute
-      limit: 300, // per client IP (see trust proxy in main.ts); login has its own stricter limit
+      limit: 300, // per client IP (see trust proxy in main.ts); auth routes have stricter limits
     }]),
     PrismaModule,
     StorageModule,
+    EmailModule,
     AuthModule,
     UsersModule,
     ClientsModule,
@@ -35,6 +38,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ApprovalsModule,
     ActivityLogModule,
     NotificationsModule,
+    BillingModule,
   ],
   controllers: [HealthController],
   providers: [

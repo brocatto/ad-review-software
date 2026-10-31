@@ -10,19 +10,78 @@ datasource db {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
-  passwordHash String   @map("password_hash")
+  passwordHash String?  @map("password_hash")
   fullName     String   @map("full_name")
   role         String   @default("MANAGER")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Auth providers: LOCAL (e-mail + senha) or GOOGLE (login social)
+  googleId     String? @unique @map("google_id")
+  authProvider String  @default("LOCAL") @map("auth_provider")
+
+  // E-mail verification (self-signup accounts must confirm before logging in)
+  emailVerified            Boolean   @default(false) @map("email_verified")
+  verificationToken        String?   @map("verification_token")
+  verificationTokenExpires DateTime? @map("verification_token_expires")
+
+  // Password reset
+  resetToken       String?   @map("reset_token")
+  resetTokenExpiry DateTime? @map("reset_token_expiry")
+
+  // Billing: NONE | TRIAL | ACTIVE | PAST_DUE | CANCELED (mirrors Stripe via webhooks)
+  stripeCustomerId   String?   @unique @map("stripe_customer_id")
+  trialEndsAt        DateTime? @map("trial_ends_at")
+  subscriptionStatus String    @default("NONE") @map("subscription_status")
 
   batches          Batch[]
   clients          Client[]
   adjustmentStatus InternalAdjustmentStatus[]
   activityLogs     ActivityLog[]
   creativeVersions CreativeVersion[]
+  subscription     Subscription?
 
+  @@index([verificationToken])
+  @@index([resetToken])
   @@map("users")
+}
+
+model Plan {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  displayName   String   @map("display_name")
+  priceMonthly  Int      @map("price_monthly")
+  stripePriceId String   @unique @map("stripe_price_id")
+  features      String?
+  limits        String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                   String    @id @default(uuid())
+  userId               String    @unique @map("user_id")
+  planId               String    @map("plan_id")
+  stripeSubscriptionId String    @unique @map("stripe_subscription_id")
+  status               String    @default("ACTIVE")
+  currentPeriodStart   DateTime  @map("current_period_start")
+  currentPeriodEnd     DateTime  @map("current_period_end")
+  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+  canceledAt           DateTime? @map("canceled_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+  @@map("subscriptions")
 }
 
 model Client {

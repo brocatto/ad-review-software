@@ -28,6 +28,8 @@ npm test                          # jest, src/**/*.spec.ts (hand-written Prisma 
 npx jest src/modules/batches      # one folder / file
 npm run lint                      # eslint --fix
 npm run db:migrate:create -- --name <name>   # after editing schema.prisma; commit the SQL
+# (non-interactive shells: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/<ts>_<name>/migration.sql && npx prisma migrate deploy)
+stripe listen --forward-to localhost:3000/webhooks/stripe   # local Stripe webhooks (set STRIPE_WEBHOOK_SECRET to the printed whsec_)
 
 cd frontend
 npm install
@@ -39,6 +41,14 @@ npm run lint                      # --max-warnings 0
 CI (`.github/workflows/ci.yml`) runs backend typecheck/build/tests and the frontend build on pushes to `master` and `aios-version`.
 
 ## Architecture
+
+### SaaS layer (self-signup, trial, billing)
+- Public routes: landing page at `/`, `/signup`, `/verify-email`, `/forgot-password`, `/reset-password`. Backend: `POST /auth/signup` (e-mail + password, account starts with `TRIAL_PERIOD_DAYS`, must confirm e-mail before login), `GET /auth/verify-email?token`, `POST /auth/google` (Google Identity Services ID token verified with `google-auth-library`; links by e-mail or creates a trial account), `POST /auth/forgot-password` / `reset-password` (1h tokens).
+- `SubscriptionGuard` (after `JwtAuthGuard` on clients, batches and creatives) allows `role ADMIN`, running trials and `ACTIVE` subscriptions; otherwise it throws `403 SUBSCRIPTION_REQUIRED`, which the frontend axios interceptor turns into a redirect to `/billing?expired=true`. `/billing/*` and `/activity-logs` are JWT-only on purpose.
+- `BillingModule`: `POST /billing/checkout` (Stripe Checkout, subscription mode, `STRIPE_PRICE_ID_MONTHLY`), `POST /billing/portal`, `GET /billing/status`, and `POST /webhooks/stripe` (raw body, signature-verified, `@SkipThrottle`). Webhooks mirror the Stripe subscription into `Plan`/`Subscription` and `User.subscriptionStatus` (`NONE | TRIAL | ACTIVE | PAST_DUE | CANCELED`).
+- `EmailModule` (Resend) sends verification, welcome, password-reset and billing e-mails in pt-BR; without `RESEND_API_KEY` it logs them (links included) instead. Stripe, Resend and Google are optional in development and validated as required in production by `config/env.validation.ts`.
+- Accounts provisioned by an admin (`POST /users`, seed) are created verified with `subscriptionStatus ACTIVE`; the migration `20261031160000_add_saas_auth_billing` grandfathered all pre-existing users the same way.
+- History: this layer was built in Jan 2026 on a detached HEAD, orphaned by the AIOS bootstrap on 2026-02-25 and recovered from the reflog on 2026-10-31 (local branch `recovered/saas-2026-01`, docs in `docs/plano-saas-2026-01.md` and `docs/landing-page.md`).
 
 ### Two access paths into the same data
 1. **Internal team (admin panel):** JWT (`POST /auth/login`, Passport `JwtAuthGuard`). Every admin controller is guarded at class level. Roles: `ADMIN` and `MANAGER`; admin-only routes add `RolesGuard` + `@Roles('ADMIN')` (see `UsersController`). **Ownership is enforced in the services**: clients belong to the user that created them (`Client.userId`), batches to `createdByUserId`, and creatives/activity logs are checked through their batch (`BatchesService.verifyOwnership`). Every service method that touches these entities takes the `userId` from `req.user`.

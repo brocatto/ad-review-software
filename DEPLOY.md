@@ -37,6 +37,14 @@ CLOUDINARY_API_SECRET=seu-api-secret
 MAX_FILE_SIZE=104857600
 SEED_ADMIN_EMAIL=seu-email@empresa.com
 SEED_ADMIN_PASSWORD=[senha forte, mínimo 8 caracteres]
+# SaaS (obrigatórias em produção, ver "Integrações SaaS" abaixo)
+GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+RESEND_API_KEY=re_xxx
+EMAIL_FROM=AdReviewOS <noreply@seudominio.com>
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PRICE_ID_MONTHLY=price_xxx
+TRIAL_PERIOD_DAYS=30
 ```
 
 4. Start command: `npx prisma migrate deploy && node dist/main.js`
@@ -47,7 +55,28 @@ SEED_ADMIN_PASSWORD=[senha forte, mínimo 8 caracteres]
 ### Frontend na Vercel
 1. New Project → Import `brocatto/ad-review-software`
 2. Root Directory: `frontend` · Framework: Vite · Build: `npm run build` · Output: `dist`
-3. Variável: `VITE_API_URL=https://sua-api.up.railway.app`
+3. Variáveis: `VITE_API_URL=https://sua-api.up.railway.app` e `VITE_GOOGLE_CLIENT_ID=<mesmo client id do backend>`
+4. Aponte o domínio (ex.: `adreviewos.com`, hoje estacionado na Hostinger) para a Vercel em Settings → Domains e ajuste o DNS no registrador
+
+---
+
+## Integrações SaaS
+
+### Google Sign-In
+1. Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web application)
+2. Authorized JavaScript origins: a URL do frontend (ex.: `https://adreviewos.com`) e `http://localhost:5173` para dev
+3. Coloque o Client ID em `GOOGLE_CLIENT_ID` (backend) e `VITE_GOOGLE_CLIENT_ID` (frontend)
+
+### Resend (e-mails transacionais)
+1. Verifique o domínio de envio no Resend (SPF/DKIM) e use-o em `EMAIL_FROM`
+2. `RESEND_API_KEY` no backend. Sem a chave, o backend apenas loga os e-mails (útil em dev)
+
+### Stripe (assinatura mensal)
+1. Crie o produto/preço recorrente mensal e copie o id para `STRIPE_PRICE_ID_MONTHLY`
+2. Developers → Webhooks → endpoint `https://sua-api/webhooks/stripe` com os eventos `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`; copie o signing secret para `STRIPE_WEBHOOK_SECRET`
+3. Ative o Customer Portal em Settings → Billing → Customer portal
+4. Em dev: `stripe listen --forward-to localhost:3000/webhooks/stripe`
+5. Contas `ADMIN` e contas criadas pelo admin não passam pela cobrança; as demais têm `TRIAL_PERIOD_DAYS` de teste e depois precisam assinar
 
 ---
 
@@ -92,7 +121,9 @@ Sem Cloudinary, os uploads ficam no volume `uploads_data`.
 - [ ] Migrations executadas (`prisma migrate deploy`)
 - [ ] Seed executado (admin criado) e senha trocada
 - [ ] `FRONTEND_URL` (backend) e `VITE_API_URL` (frontend) apontando um para o outro
+- [ ] Google Sign-In, Resend e Stripe configurados (webhook ativo e `STRIPE_WEBHOOK_SECRET` definido)
 - [ ] Teste: login, criar lote, upload, link público, aprovação/reprovação, revisão, notificação Slack
+- [ ] Teste SaaS: cadastro → e-mail de confirmação → login → checkout com cartão de teste → status Ativo em Faturamento
 
 ## Troubleshooting
 - **Database Connection Failed**: confira `DATABASE_URL` e se o Postgres está no ar.

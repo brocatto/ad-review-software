@@ -1,9 +1,33 @@
+export type SubscriptionStatus = 'NONE' | 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED';
+
 export interface User {
   id: string;
   email: string;
   fullName: string;
   role: 'ADMIN' | 'MANAGER';
+  emailVerified?: boolean;
+  subscriptionStatus?: SubscriptionStatus;
+  trialEndsAt?: string | null;
   createdAt?: string;
+}
+
+export interface BillingStatus {
+  billingEnabled: boolean;
+  isAdmin: boolean;
+  hasAccess: boolean;
+  subscriptionStatus: SubscriptionStatus | string;
+  isTrialActive: boolean;
+  trialDaysLeft: number;
+  trialEndsAt: string | null;
+  /** Monthly price of the plan offered at checkout, in cents (null when billing is off) */
+  priceMonthly: number | null;
+  currency: string;
+  subscription: {
+    status: string;
+    currentPeriodEnd: string;
+    cancelAtPeriodEnd: boolean;
+    plan: { name: string; price: number } | null;
+  } | null;
 }
 
 export interface Client {

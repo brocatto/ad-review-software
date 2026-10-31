@@ -17,6 +17,7 @@ import {
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { CreativesService } from './creatives.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SubscriptionGuard } from '../auth/subscription.guard';
 import { UpdateNameDto } from './dto/update-name.dto';
 import { UpdateAdjustmentStatusDto } from './dto/update-adjustment-status.dto';
 
@@ -24,7 +25,7 @@ import { UpdateAdjustmentStatusDto } from './dto/update-adjustment-status.dto';
 // Upload routes keep plain string ids on purpose: validation failures must reach the
 // service so it can discard the temp files multer already wrote.
 @Controller('creatives')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard)
 export class CreativesController {
   constructor(private creativesService: CreativesService) {}
 

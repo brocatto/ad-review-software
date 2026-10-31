@@ -8,6 +8,7 @@ const PUBLIC_USER_FIELDS = {
   email: true,
   fullName: true,
   role: true,
+  subscriptionStatus: true,
   createdAt: true,
 } as const;
 
@@ -17,7 +18,7 @@ export class UsersService {
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
-      where: { email },
+      where: { email: email.trim().toLowerCase() },
     });
   }
 
@@ -27,8 +28,10 @@ export class UsersService {
     });
   }
 
+  /** Accounts provisioned by an admin (internal team) skip e-mail verification and billing. */
   async create(createUserDto: CreateUserDto) {
-    if (await this.findByEmail(createUserDto.email)) {
+    const email = createUserDto.email.trim().toLowerCase();
+    if (await this.findByEmail(email)) {
       throw new ConflictException('Já existe um usuário com este e-mail');
     }
 
@@ -36,10 +39,13 @@ export class UsersService {
 
     return this.prisma.user.create({
       data: {
-        email: createUserDto.email,
+        email,
         passwordHash,
         fullName: createUserDto.fullName,
         role: createUserDto.role || 'MANAGER',
+        authProvider: 'LOCAL',
+        emailVerified: true,
+        subscriptionStatus: 'ACTIVE',
       },
       select: PUBLIC_USER_FIELDS,
     });
