@@ -9,7 +9,9 @@ contas e cadastros em nome da empresa. Ordem recomendada: Stripe → Cloudinary 
 - [x] **Frontend publicado na Vercel** (projeto `adreviewos`, time `brocattos-projects`), produção em `https://adreviewos.vercel.app`, com `VITE_API_URL=https://api.adreviewos.com` e `VITE_GOOGLE_CLIENT_ID` já configurados para Production e Preview.
 - [x] Domínios `adreviewos.com` e `www.adreviewos.com` já adicionados ao projeto da Vercel (faltam só os registros DNS, abaixo).
 - [x] Stripe modo teste: produto, preço R$ 99/mês, webhook e portal configurados pelo script. Resend: domínio `news.adreviewos.com` verificado.
-- [x] Scripts prontos: `backend/scripts/stripe-setup.mjs`, `scripts/railway-env.sh`, `scripts/smoke-api.mjs`, template `backend/.env.production.example`.
+- [x] Scripts prontos: `backend/scripts/stripe-setup.mjs`, `scripts/railway-setup.sh`, `scripts/smoke-api.mjs`, template `backend/.env.production.example`.
+- [x] **Armazenamento de arquivos resolvido:** store Vercel Blob `adreviewos-uploads` criado e testado (upload, leitura pública e exclusão). Cloudinary virou opcional.
+- [x] `backend/.env.production` pré-preenchido nesta máquina; a senha do admin de produção está nele (`SEED_ADMIN_PASSWORD`).
 
 ## 1. Stripe (modo live) — ~15 min
 
@@ -22,11 +24,10 @@ contas e cadastros em nome da empresa. Ordem recomendada: Stripe → Cloudinary 
    O script cria produto, preço mensal (R$ 99, mude com `PRICE_BRL_CENTS`), webhook `https://api.adreviewos.com/webhooks/stripe` e o portal do cliente, e imprime `STRIPE_PRICE_ID_MONTHLY` e `STRIPE_WEBHOOK_SECRET` para o `.env.production`.
 4. Opcional: em Settings → Payment methods, ative Pix para o checkout em BRL.
 
-## 2. Cloudinary — ~5 min
+## 2. Arquivos dos criativos — já resolvido
 
-1. Conta gratuita em cloudinary.com (25 GB).
-2. Dashboard → copie Cloud name, API key e API secret para `CLOUDINARY_*` no `.env.production`.
-   Sem isso os uploads ficam no disco do container e somem a cada deploy.
+O store **Vercel Blob** `adreviewos-uploads` (acesso público) já foi criado na sua conta e o backend já sabe usá-lo: basta `BLOB_READ_WRITE_TOKEN` no `.env.production` (já pré-preenchido em `backend/.env.production` nesta máquina; se precisar de novo, Vercel → Storage → adreviewos-uploads → token, ou `cd frontend && vercel env pull`).
+Cloudinary continua opcional: se um dia preencher `CLOUDINARY_*`, ele passa a ter prioridade. Fique de olho na cota do Blob no plano Hobby; para vídeos pesados em volume, Cloudinary (25 GB grátis) ou um upgrade na Vercel.
 
 ## 3. Google Sign-In — ~3 min
 
@@ -38,10 +39,11 @@ Google Cloud Console → APIs & Services → Credentials → o client `101336961
 
 O CLI do Railway (5.71) já está instalado nesta máquina. Só o login precisa de navegador; o resto é um script.
 
+`backend/.env.production` já existe nesta máquina (ignorado pelo git), pré-preenchido com JWT_SECRET novo, senha do admin, Blob, Google, Resend, Slack e FRONTEND_URL. Só faltam as três variáveis do Stripe live (saída do passo 1) e, se quiser, `SENTRY_DSN`.
+
 ```bash
 railway login                                            # abre o navegador
-cp backend/.env.production.example backend/.env.production
-# preencha: JWT_SECRET, SEED_ADMIN_PASSWORD, Cloudinary, Stripe live, Resend, Google
+# edite backend/.env.production: cole STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID_MONTHLY
 scripts/railway-setup.sh backend/.env.production         # projeto + Postgres + serviço api + variáveis + deploy + domínios
 railway logs                                             # acompanhe até "Nest application successfully started"
 cd backend && railway ssh -- node prisma/seed.js         # cria o admin (uma vez)

@@ -6,7 +6,7 @@ const SAAS_REQUIRED_IN_PRODUCTION = [
   'STRIPE_WEBHOOK_SECRET',
   'STRIPE_PRICE_ID_MONTHLY',
 ];
-const SAAS_OPTIONAL = ['GOOGLE_CLIENT_ID', 'EMAIL_FROM'];
+const SAAS_OPTIONAL = ['GOOGLE_CLIENT_ID', 'EMAIL_FROM', 'SENTRY_DSN'];
 
 export function validateEnv(config: Record<string, unknown>) {
   const errors: string[] = [];
@@ -27,6 +27,14 @@ export function validateEnv(config: Record<string, unknown>) {
     if (jwtSecret.startsWith('CHANGE_THIS')) {
       errors.push('JWT_SECRET still has the placeholder value — generate a real secret');
     }
+  }
+
+  // Creative files must outlive deploys: Cloudinary or Vercel Blob in production
+  const hasRemoteStorage = !!config.CLOUDINARY_CLOUD_NAME || !!config.BLOB_READ_WRITE_TOKEN;
+  if (isProduction && !hasRemoteStorage && config.ALLOW_LOCAL_UPLOADS_IN_PRODUCTION !== 'true') {
+    errors.push(
+      'Configure CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET or BLOB_READ_WRITE_TOKEN for uploads in production (or set ALLOW_LOCAL_UPLOADS_IN_PRODUCTION=true with a persistent volume)',
+    );
   }
 
   for (const name of SAAS_REQUIRED_IN_PRODUCTION) {
