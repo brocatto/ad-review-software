@@ -36,21 +36,19 @@ Google Cloud Console → APIs & Services → Credentials → o client `101336961
 
 ## 4. Backend + banco no Railway — ~15 min
 
+O CLI do Railway (5.71) já está instalado nesta máquina. Só o login precisa de navegador; o resto é um script.
+
 ```bash
-npm i -g @railway/cli
-railway login
-cd backend
-railway init            # novo projeto "adreviewos" (ou railway link se já existir)
-railway add --database postgres
-cp .env.production.example .env.production   # preencha: JWT_SECRET, SEED_ADMIN_PASSWORD, Cloudinary, Stripe live, Resend, Google
-../scripts/railway-env.sh .env.production
-railway up              # usa backend/railway.json: Dockerfile, migrate deploy no start, healthcheck /health
-railway domain          # gere o domínio *.up.railway.app e depois adicione api.adreviewos.com em Settings → Networking
-railway run npm run db:seed   # cria o admin (uma vez)
+railway login                                            # abre o navegador
+cp backend/.env.production.example backend/.env.production
+# preencha: JWT_SECRET, SEED_ADMIN_PASSWORD, Cloudinary, Stripe live, Resend, Google
+scripts/railway-setup.sh backend/.env.production         # projeto + Postgres + serviço api + variáveis + deploy + domínios
+railway logs                                             # acompanhe até "Nest application successfully started"
+cd backend && railway ssh -- node prisma/seed.js         # cria o admin (uma vez)
 ```
 
-Gere o `JWT_SECRET` com `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`.
-`DATABASE_URL` é injetada pelo Railway ao vincular o Postgres. Ative o backup do banco em Settings do Postgres.
+O script cria o projeto `adreviewos`, o Postgres, o serviço `api`, envia todas as variáveis, referencia `DATABASE_URL` ao Postgres, faz o deploy usando `backend/railway.json` e gera o domínio `*.up.railway.app` mais o custom `api.adreviewos.com` (ele imprime o CNAME para o passo 5).
+Gere o `JWT_SECRET` com `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`. Ative o backup do banco em Settings do Postgres.
 
 ## 5. DNS na Hostinger — ~5 min
 
