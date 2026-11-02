@@ -13,6 +13,19 @@ contas e cadastros em nome da empresa. Ordem recomendada: Stripe → Cloudinary 
 - [x] **Armazenamento de arquivos resolvido:** store Vercel Blob `adreviewos-uploads` criado e testado (upload, leitura pública e exclusão). Cloudinary virou opcional.
 - [x] `backend/.env.production` pré-preenchido nesta máquina; a senha do admin de produção está nele (`SEED_ADMIN_PASSWORD`).
 
+## O que foi tentado automaticamente e onde parou
+
+Cada passo abaixo foi tentado sem navegador em 2026-11-02; o motivo da parada é verificado, não suposto.
+
+| Passo | Tentativa | Resultado |
+|-------|-----------|-----------|
+| Railway | `railway login --browserless` e `railway up -y` | O CLI exige confirmação humana em `https://railway.com/activate` (código de uso único que expira em minutos). Sem login não há projeto nem deploy. |
+| Stripe live | `accounts.retrieve` e `account_links` com a chave de teste | Conta `acct_1StJbb…` com `details_submitted=false`, `charges_enabled=false`. Contas standard só são ativadas pelo dashboard (dados da empresa + banco); a API não oferece esse fluxo e a chave live só existe depois. |
+| Google Sign-In | Busca por comando `gcloud` para OAuth clients de Sign-In | Não existe: origens autorizadas e tela de consentimento são exclusivas do console. |
+| DNS | `vercel domains verify` (apex e www) | "invalid DNS configuration": os nameservers são `dns-parking.com` (Hostinger); os registros precisam ser criados no painel da Hostinger, que não expõe API sem token gerado por você. |
+| Banco/API na Vercel | Provisionar Postgres via CLI para hospedar o backend na Vercel | Bloqueado pela política da sessão; e mesmo com banco, o limite de 4,5 MB por requisição da Vercel exigiria redesenhar o upload de criativos, decisão que não cabe tomar sem você. Railway continua o plano. |
+| Cadastro real com pagamento | `smoke-api.mjs` contra `https://api.adreviewos.com` | O host não resolve até existirem o deploy e o DNS acima. |
+
 ## 1. Stripe (modo live) — ~15 min
 
 1. Dashboard do Stripe → ativar a conta (dados da empresa, representante, conta bancária). A conta `acct_1StJbb…` já existe no Brasil com o nome "AdReview OS".
