@@ -116,10 +116,13 @@ export class BillingService {
       throw new BadRequestException('Nenhuma conta de cobrança encontrada. Assine primeiro.');
     }
 
+    // Optional: pin a portal configuration created by scripts/stripe-setup.mjs
+    const configuration = this.configService.get<string>('STRIPE_PORTAL_CONFIGURATION_ID') || undefined;
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${this.frontendUrl}/billing`,
       locale: 'pt-BR',
+      ...(configuration ? { configuration } : {}),
     });
 
     return { url: session.url };

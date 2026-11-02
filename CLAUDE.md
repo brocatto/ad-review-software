@@ -50,6 +50,13 @@ CI (`.github/workflows/ci.yml`) runs backend typecheck/build/tests and the front
 - Accounts provisioned by an admin (`POST /users`, seed) are created verified with `subscriptionStatus ACTIVE`; the migration `20261031160000_add_saas_auth_billing` grandfathered all pre-existing users the same way.
 - History: this layer was built in Jan 2026 on a detached HEAD, orphaned by the AIOS bootstrap on 2026-02-25 and recovered from the reflog on 2026-10-31 (local branch `recovered/saas-2026-01`, docs in `docs/plano-saas-2026-01.md` and `docs/landing-page.md`).
 
+### Production hardening (added 2026-11-02)
+- Verification and reset tokens are stored as SHA-256 hashes (`hashToken` in `auth.service.ts`); only the e-mailed link carries the raw token.
+- `config/sentry.ts`: `initSentry()` + `SentryExceptionFilter` report 5xx to Sentry when `SENTRY_DSN` is set (frontend: `lib/sentry.ts` + `components/ErrorBoundary.tsx` with `VITE_SENTRY_DSN`). Both are no-ops without a DSN.
+- `billing/trial-reminder.service.ts` (`@nestjs/schedule`, daily 10:00 America/Sao_Paulo) e-mails self-service trials ending in 3 days.
+- Legal pages `/termos` and `/privacidade` (`pages/legal/*`, texts reference `lib/legal.ts`), linked from signup and the landing footer. SEO assets in `frontend/public` (favicon, og-image, robots, sitemap) and Open Graph tags in `index.html`.
+- Ops scripts: `scripts/smoke-api.mjs`, `scripts/smoke-saas.mjs`, `scripts/railway-env.sh`, `backend/scripts/stripe-setup.mjs` (idempotent product/price/webhook/portal). Railway config in `backend/railway.json`; production env template in `backend/.env.production.example`. Launch runbook: `docs/launch-checklist.md`.
+
 ### Two access paths into the same data
 1. **Internal team (admin panel):** JWT (`POST /auth/login`, Passport `JwtAuthGuard`). Every admin controller is guarded at class level. Roles: `ADMIN` and `MANAGER`; admin-only routes add `RolesGuard` + `@Roles('ADMIN')` (see `UsersController`). **Ownership is enforced in the services**: clients belong to the user that created them (`Client.userId`), batches to `createdByUserId`, and creatives/activity logs are checked through their batch (`BatchesService.verifyOwnership`). Every service method that touches these entities takes the `userId` from `req.user`.
 2. **Clients (no login):** each `Batch` has a UUID `accessToken`. `ApprovalsController` serves the unauthenticated `/public/batch/:accessToken` endpoints used by the frontend route `/approve/:accessToken` (`ApprovalPage.tsx`, swipe UI). The public GET returns only `PENDING` creatives plus `allCreativesCount` for the progress bar.

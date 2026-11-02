@@ -22,6 +22,8 @@ const RESET_TTL_MS = 60 * 60 * 1000; // 1h
 const DEFAULT_TRIAL_DAYS = 30;
 
 const randomToken = () => crypto.randomBytes(32).toString('hex');
+/** Only the hash is stored: a database leak must not hand out working e-mail links */
+export const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 interface AuthUserRecord {
@@ -92,7 +94,7 @@ export class AuthService {
         fullName: dto.fullName.trim(),
         authProvider: 'LOCAL',
         emailVerified: false,
-        verificationToken,
+        verificationToken: hashToken(verificationToken),
         verificationTokenExpires: new Date(Date.now() + VERIFICATION_TTL_MS),
         ...this.trialFields(),
       },
@@ -109,7 +111,7 @@ export class AuthService {
   async verifyEmail(token: string) {
     const user = token
       ? await this.prisma.user.findFirst({
-          where: { verificationToken: token, verificationTokenExpires: { gt: new Date() } },
+          where: { verificationToken: hashToken(token), verificationTokenExpires: { gt: new Date() } },
         })
       : null;
 
@@ -139,7 +141,10 @@ export class AuthService {
     const verificationToken = randomToken();
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { verificationToken, verificationTokenExpires: new Date(Date.now() + VERIFICATION_TTL_MS) },
+      data: {
+        verificationToken: hashToken(verificationToken),
+        verificationTokenExpires: new Date(Date.now() + VERIFICATION_TTL_MS),
+      },
     });
 
     await this.emailService.sendVerificationEmail(user.email, verificationToken, user.fullName);
@@ -221,7 +226,7 @@ export class AuthService {
     const resetToken = randomToken();
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { resetToken, resetTokenExpiry: new Date(Date.now() + RESET_TTL_MS) },
+      data: { resetToken: hashToken(resetToken), resetTokenExpiry: new Date(Date.now() + RESET_TTL_MS) },
     });
 
     await this.emailService.sendPasswordResetEmail(user.email, resetToken, user.fullName);
@@ -231,7 +236,7 @@ export class AuthService {
   async resetPassword(token: string, newPassword: string) {
     const user = token
       ? await this.prisma.user.findFirst({
-          where: { resetToken: token, resetTokenExpiry: { gt: new Date() } },
+          where: { resetToken: hashToken(token), resetTokenExpiry: { gt: new Date() } },
         })
       : null;
 

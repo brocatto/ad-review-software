@@ -1016,6 +1016,13 @@ export default function LandingPage() {
           <p className="text-xs sm:text-sm" style={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 300 }}>
             © 2026 AdReviewOS. Feito para quem está cansado do caos.
           </p>
+          <p className="mt-3 text-xs sm:text-sm" style={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 300 }}>
+            <a href="/termos" className="hover:text-white transition-colors">Termos de Uso</a>
+            <span className="mx-2">·</span>
+            <a href="/privacidade" className="hover:text-white transition-colors">Política de Privacidade</a>
+            <span className="mx-2">·</span>
+            <a href="mailto:contato@adreviewos.com" className="hover:text-white transition-colors">contato@adreviewos.com</a>
+          </p>
         </div>
       </footer>
 

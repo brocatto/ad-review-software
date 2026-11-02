@@ -48,14 +48,7 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
       STRIPE_PRICE_ID_MONTHLY: ${STRIPE_PRICE_ID_MONTHLY}
       TRIAL_PERIOD_DAYS: ${TRIAL_PERIOD_DAYS:-30}
-      # SaaS integrations (see backend/.env.example)
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      RESEND_API_KEY: ${RESEND_API_KEY}
-      EMAIL_FROM: ${EMAIL_FROM:-AdReviewOS <noreply@example.com>}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      STRIPE_PRICE_ID_MONTHLY: ${STRIPE_PRICE_ID_MONTHLY}
-      TRIAL_PERIOD_DAYS: ${TRIAL_PERIOD_DAYS:-30}
+      SENTRY_DSN: ${SENTRY_DSN}
     volumes:
       # Persiste uploads locais quando Cloudinary não está configurado
       - uploads_data:/app/uploads
@@ -70,7 +63,6 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
-        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
         VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     restart: always
     ports:

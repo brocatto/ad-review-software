@@ -1,13 +1,22 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { getUploadDir } from './config/storage.service';
+import { initSentry, SentryExceptionFilter } from './config/sentry';
 
 async function bootstrap() {
+  // Error monitoring first, so boot failures are reported too (no-op without SENTRY_DSN)
+  const sentryEnabled = initSentry();
+
   // rawBody keeps the unparsed payload available for Stripe webhook signature checks
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+
+  if (sentryEnabled) {
+    const { httpAdapter } = app.get(HttpAdapterHost);
+    app.useGlobalFilters(new SentryExceptionFilter(httpAdapter));
+  }
 
   // Behind a reverse proxy (Railway/Render/etc.) the real client IP arrives via
   // X-Forwarded-For — without this, rate limiting buckets everyone under the proxy IP

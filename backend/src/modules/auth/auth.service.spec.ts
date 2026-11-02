@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { AuthService } from './auth.service';
+import { AuthService, hashToken } from './auth.service';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -107,7 +107,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('creates an unverified account with a 30-day trial and sends the confirmation e-mail', async () => {
+    it('creates an unverified trial account, stores only the token hash and e-mails the raw token', async () => {
       const result = await service.signup({
         email: ' Nova@Empresa.com ',
         password: 'senha-forte',
@@ -119,15 +119,16 @@ describe('AuthService', () => {
       expect(data.fullName).toBe('Nova Pessoa');
       expect(data.emailVerified).toBe(false);
       expect(data.subscriptionStatus).toBe('TRIAL');
-      expect(data.verificationToken).toHaveLength(64);
       const trialDays = (data.trialEndsAt.getTime() - Date.now()) / DAY;
       expect(trialDays).toBeGreaterThan(29.9);
       expect(trialDays).toBeLessThanOrEqual(30);
-      expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(
-        'nova@empresa.com',
-        data.verificationToken,
-        'Nova Pessoa',
-      );
+
+      const [to, rawToken, name] = emailService.sendVerificationEmail.mock.calls[0];
+      expect(to).toBe('nova@empresa.com');
+      expect(name).toBe('Nova Pessoa');
+      expect(rawToken).toHaveLength(64);
+      expect(data.verificationToken).toBe(hashToken(rawToken));
+      expect(data.verificationToken).not.toBe(rawToken);
       expect(result.email).toBe('nova@empresa.com');
     });
   });
@@ -140,11 +141,16 @@ describe('AuthService', () => {
       await expect(service.verifyEmail('')).rejects.toThrow(BadRequestException);
     });
 
-    it('marks the account verified, sends the welcome e-mail and logs the user in', async () => {
+    it('looks the token up by its hash, marks the account verified and logs the user in', async () => {
       prisma.user.findFirst.mockResolvedValue({ ...verifiedUser, emailVerified: false });
 
       const result = await service.verifyEmail('token-1');
 
+      expect(prisma.user.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ verificationToken: hashToken('token-1') }),
+        }),
+      );
       expect(prisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: { emailVerified: true, verificationToken: null, verificationTokenExpires: null },
@@ -171,15 +177,16 @@ describe('AuthService', () => {
       expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
 
-    it('stores a reset token and e-mails it', async () => {
+    it('stores the reset token hash and e-mails the raw token', async () => {
       usersService.findByEmail.mockResolvedValue(verifiedUser);
 
       await service.forgotPassword('a@b.com');
 
       const data = prisma.user.update.mock.calls[0][0].data;
-      expect(data.resetToken).toHaveLength(64);
+      const [, rawToken] = emailService.sendPasswordResetEmail.mock.calls[0];
+      expect(rawToken).toHaveLength(64);
+      expect(data.resetToken).toBe(hashToken(rawToken));
       expect(data.resetTokenExpiry.getTime()).toBeGreaterThan(Date.now());
-      expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith('a@b.com', data.resetToken, 'Ana');
     });
   });
 
@@ -195,6 +202,9 @@ describe('AuthService', () => {
 
       await service.resetPassword('token-1', 'nova-senha-123');
 
+      expect(prisma.user.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ resetToken: hashToken('token-1') }) }),
+      );
       const data = prisma.user.update.mock.calls[0][0].data;
       expect(await bcrypt.compare('nova-senha-123', data.passwordHash)).toBe(true);
       expect(data.resetToken).toBeNull();

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './config/prisma.module';
@@ -27,6 +28,7 @@ import { BillingModule } from './modules/billing/billing.module';
       ttl: 60000, // 1 minute
       limit: 300, // per client IP (see trust proxy in main.ts); auth routes have stricter limits
     }]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     StorageModule,
     EmailModule,

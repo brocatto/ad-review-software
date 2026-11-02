@@ -192,7 +192,9 @@ export function SignupPage() {
           </p>
         )}
         <p className="text-center text-xs text-text-muted mt-3">
-          Ao criar uma conta, você concorda com os Termos de Uso.
+          Ao criar uma conta, você concorda com os{' '}
+          <Link to="/termos" className="underline hover:text-text-primary">Termos de Uso</Link> e a{' '}
+          <Link to="/privacidade" className="underline hover:text-text-primary">Política de Privacidade</Link>.
         </p>
       </div>
     </div>

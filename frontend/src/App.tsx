@@ -13,6 +13,8 @@ import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { BillingPage } from './pages/BillingPage';
 import { ApprovalPage } from './pages/ApprovalPage';
+import { TermsPage } from './pages/legal/TermsPage';
+import { PrivacyPage } from './pages/legal/PrivacyPage';
 import { AdminLayout } from './components/layout/AdminLayout';
 
 function ProtectedLayout() {
@@ -35,6 +37,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/approve/:accessToken" element={<ApprovalPage />} />
+        <Route path="/termos" element={<TermsPage />} />
+        <Route path="/privacidade" element={<PrivacyPage />} />
 
         {/* Internal panel (JWT) */}
         <Route element={<ProtectedLayout />}>

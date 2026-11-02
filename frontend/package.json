@@ -11,6 +11,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
+    "@sentry/react": "^11.10.0",
     "@use-gesture/react": "^10.3.0",
     "axios": "^1.6.5",
     "framer-motion": "^10.18.0",

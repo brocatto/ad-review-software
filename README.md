@@ -67,6 +67,8 @@ npm run dev                     # http://localhost:5173
 - O admin da plataforma (`role ADMIN`) e as contas criadas por ele em Configurações nunca são cobrados.
 - Sem `RESEND_API_KEY`, os e-mails (confirmação, boas-vindas, redefinição de senha, cobrança) são apenas logados no console do backend, com os links. Sem chaves do Stripe, a página de Faturamento informa que a cobrança não está configurada. Sem `GOOGLE_CLIENT_ID`, o botão do Google não aparece.
 - Para testar webhooks localmente: `stripe listen --forward-to localhost:3000/webhooks/stripe` e copie o `whsec_` para `STRIPE_WEBHOOK_SECRET`.
+- Termos de Uso em `/termos` e Política de Privacidade em `/privacidade` (textos em `frontend/src/pages/legal`, dados da empresa em `frontend/src/lib/legal.ts`).
+- Monitoramento opcional com Sentry (`SENTRY_DSN` no backend, `VITE_SENTRY_DSN` no frontend). Scripts de operação em `scripts/` e o roteiro de lançamento em `docs/launch-checklist.md`.
 
 ## Estrutura
 

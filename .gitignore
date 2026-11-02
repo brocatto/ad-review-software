@@ -65,3 +65,7 @@ logs/
 .aios-core/local/
 .claude/settings.local.json
 .aios/install-log.txt
+
+# Production env files (filled locally, pushed with scripts/railway-env.sh)
+.env.production
+backend/.env.production

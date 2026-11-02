@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /batches
+Disallow: /history
+Disallow: /settings
+Disallow: /billing
+Disallow: /approve/
+Disallow: /verify-email
+Disallow: /reset-password
+
+Sitemap: https://adreviewos.com/sitemap.xml
